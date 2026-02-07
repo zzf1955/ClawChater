@@ -1,0 +1,25 @@
+<script setup>
+import { ref } from 'vue'
+import Sidebar from './components/Sidebar.vue'
+import BrowserView from './views/BrowserView.vue'
+import ConfigView from './views/ConfigView.vue'
+import ChatView from './views/ChatView.vue'
+import AILogView from './views/AILogView.vue'
+
+const currentView = ref('browser')
+</script>
+
+<template>
+  <div class="flex h-screen bg-gray-50">
+    <!-- 侧边栏 -->
+    <Sidebar v-model:current="currentView" />
+
+    <!-- 主内容区 -->
+    <main class="flex-1 overflow-hidden">
+      <BrowserView v-if="currentView === 'browser'" />
+      <ChatView v-else-if="currentView === 'chat'" />
+      <AILogView v-else-if="currentView === 'ai-log'" />
+      <ConfigView v-else-if="currentView === 'config'" />
+    </main>
+  </div>
+</template>

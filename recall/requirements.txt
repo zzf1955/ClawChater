@@ -1,0 +1,16 @@
+numpy
+Pillow
+rapidocr_onnxruntime
+onnxruntime-gpu
+nvidia-cudnn-cu12
+pynvml
+imagehash
+pywin32
+psutil
+flask
+pywebview
+pystray
+requests
+httpx
+PySide6
+chromadb

@@ -1,0 +1,42 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.eggs/
+
+# Node
+node_modules/
+
+# Recall 数据（大文件/二进制）
+recall/screenshots/
+recall/data/
+recall/logs/
+recall/nul
+recall/**/nul
+
+# Android 构建产物
+recall/android/**/build/
+recall/android/**/.gradle/
+recall/android/**/local.properties
+*.apk
+
+# Screen Agent
+screen-agent/__pycache__/
+
+# 环境变量
+.env
+.env.*
+
+# IDE
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# 构建产物
+openclaw/dist/
+
+# 不跟踪的笔记
+task manager.md
