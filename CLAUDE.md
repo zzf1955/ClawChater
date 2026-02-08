@@ -4,26 +4,25 @@
 
 ## 项目愿景
 
-ClawChater 是一个**能看到你在做什么的聊天 bot**。通过持续观察用户屏幕（PC + 手机），理解用户当前活动，然后通过微信主动和用户聊天。手机端尤其重要——它能捕捉到生活中的细节。
+ClawChater 是一个**能看到你在做什么的聊天 bot**。通过持续观察用户屏幕（PC + 手机），理解用户当前活动，然后通过 Telegram 主动和用户聊天。手机端尤其重要——它能捕捉到生活中的细节。
 
 ## 系统架构
 
-三个模块协作，数据单向流动：
+两个模块协作，数据单向流动：
 
 ```
-Recall (:5000) ──HTTP──▶ Screen Agent ──POST /hooks/agent──▶ OpenClaw (:18789)
-截图+OCR+存储            LLM 分析+决策                       微信投递
-(PC + Android)           判断是否主动聊天                     (WeChat 待配置)
+Recall (:5000) ──HTTP API──▶ OpenClaw (:18789)
+截图+OCR+存储                 Thinking Agent (分析决策)
+(PC + Android)                Chat Agent (Telegram 聊天)
 ```
 
-**当前状态**：三部分基本跑通，OpenClaw 的微信渠道尚未配置。
+**当前状态**：Recall + OpenClaw 双模块架构。Thinking Agent 每 5 分钟通过 Cron 拉取 OCR 数据分析，有趣时触发 Chat Agent 在 Telegram 上聊天。
 
 ## 模块速查
 
 | 模块 | 语言 | 启动命令 | 端口 |
 |------|------|----------|------|
 | recall | Python 3.11 (conda: `recall`) | `python main.py` | 5000 |
-| screen-agent | Python 3.11 | `python main.py` | — |
 | openclaw | TypeScript (Node ≥22.12) | `pnpm start` | 18789 |
 
 ## 常用命令
@@ -42,12 +41,6 @@ npm run build --prefix "D:/BaiduSyncdisk/Desktop/ClawChater/recall/web/frontend"
 
 # Android 编译
 cmd //c "cd /d D:\\BaiduSyncdisk\\Desktop\\ClawChater\\recall\\android\\RecallMobile && gradlew.bat assembleDebug"
-```
-
-### Screen Agent
-```bash
-cd screen-agent && pip install -r requirements.txt
-python main.py                               # DRY_RUN=true，只打印不发送
 ```
 
 ### OpenClaw
@@ -72,11 +65,16 @@ pnpm check                                   # 类型检查 + oxlint + oxfmt
 
 关键约束：cuDNN 路径必须在 `import onnxruntime` **之前**加入 PATH。
 
-### Screen Agent — 智能分析层
-极简轮询代理（仅依赖 `httpx`）。每 5 分钟从 Recall 拉取 OCR 摘要 → LLM 分析 → 决定是否主动发消息。有冷却机制（默认 10 分钟）防止刷屏。默认 DRY_RUN 模式。
+### OpenClaw — 智能分析 + 消息投递层
+分层架构：CLI（Commander.js）→ Gateway（WebSocket/HTTP）→ Agent → Channels（渠道插件）。
 
-### OpenClaw — 消息投递层
-分层架构：CLI（Commander.js）→ Gateway（WebSocket/HTTP）→ Agent（Pi AI）→ Channels（渠道插件）。当前目标渠道是**微信**（通过 Baileys/Web 协议），尚未配置。
+**双 Agent 架构**：
+- **Thinking Agent**（Haiku）：后台观察者，每 5 分钟被 Cron 唤醒，从 Recall API 拉取 OCR 数据分析用户活动，有趣时写入 intent 触发 Chat Agent
+- **Chat Agent**（Sonnet）：用户面对面的聊天伙伴，读取 intent 后以朋友口吻在 Telegram 上发起聊天，从用户回复中提取 facts
+
+**共享数据**：`~/.openclaw/workspace/` 下的 `intents.json`（Thinking→Chat）和 `facts.json`（Chat→Thinking）
+
+当前渠道：**Telegram**（@zzf1955_bot）。
 
 OpenClaw 开发规范见 `openclaw/AGENTS.md`：
 - 严格 TypeScript（ESM），import 必须带 `.js` 后缀
