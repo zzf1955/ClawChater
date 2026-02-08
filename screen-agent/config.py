@@ -6,9 +6,10 @@ RECALL_API_URL = os.getenv('RECALL_API_URL', 'http://127.0.0.1:5000')
 
 # OpenClaw Hooks（暂时不用，dry_run 模式）
 OPENCLAW_HOOKS_URL = os.getenv('OPENCLAW_HOOKS_URL', 'http://127.0.0.1:18789')
-OPENCLAW_HOOK_TOKEN = os.getenv('OPENCLAW_HOOK_TOKEN', '')
-TARGET_CHANNEL = os.getenv('TARGET_CHANNEL', 'wechat')
-DRY_RUN = os.getenv('DRY_RUN', 'true').lower() == 'true'
+OPENCLAW_HOOK_TOKEN = os.getenv('OPENCLAW_HOOK_TOKEN', 'e16f618f7dcf595b4595ab66144ccfae989f194f45b479c6')
+TARGET_CHANNEL = os.getenv('TARGET_CHANNEL', 'telegram')
+TARGET_USER_ID = os.getenv('TARGET_USER_ID', '8168126294')
+DRY_RUN = os.getenv('DRY_RUN', 'false').lower() == 'true'
 
 # LLM 配置（复用 Recall 的 packyapi）
 LLM_API_KEY = os.getenv('LLM_API_KEY', 'sk-ImDyKdFFrsYLWdiclrfUbT3Hkw7kGzZahJTjHrhxNRCNzzsQ')

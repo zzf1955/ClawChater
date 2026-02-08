@@ -77,7 +77,8 @@ def main():
                 # 发送消息
                 success = openclaw.send_message(
                     question,
-                    channel=config.TARGET_CHANNEL
+                    channel=config.TARGET_CHANNEL,
+                    to=config.TARGET_USER_ID
                 )
                 if success:
                     last_question_time = time.time()

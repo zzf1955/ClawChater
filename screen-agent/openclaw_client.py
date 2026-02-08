@@ -14,16 +14,27 @@ class OpenClawClient:
         self.dry_run = dry_run
         self.client = httpx.Client(timeout=30.0)
 
-    def send_message(self, message: str, channel: str = "wechat") -> bool:
+    def send_message(self, message: str, channel: str = "telegram", to: str = "") -> bool:
         """发送主动消息
 
         dry_run=True 时只打印到控制台，不实际发送。
         """
+        payload = {
+            "message": message,
+            "name": "Screen Agent",
+            "channel": channel,
+            "deliver": True,
+            "wakeMode": "now",
+            "sessionKey": "hook:screen-agent",
+        }
+        if to:
+            payload["to"] = to
+
         if self.dry_run:
             log.info(f"[DRY-RUN] 将发送到 {channel}: {message}")
             print(f"\n{'='*60}")
             print(f"[Screen Agent -> {channel}]")
-            print(f"{message}")
+            print(f"Payload: {payload}")
             print(f"{'='*60}\n")
             return True
 
@@ -34,13 +45,7 @@ class OpenClawClient:
                     "Authorization": f"Bearer {self.token}",
                     "Content-Type": "application/json"
                 },
-                json={
-                    "message": message,
-                    "name": "Screen Agent",
-                    "channel": channel,
-                    "deliver": True,
-                    "wakeMode": "now"
-                }
+                json=payload
             )
             resp.raise_for_status()
             log.info(f"消息已发送到 {channel}: {message[:50]}...")
