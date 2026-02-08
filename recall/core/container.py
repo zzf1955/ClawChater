@@ -5,12 +5,6 @@ from pathlib import Path
 
 if TYPE_CHECKING:
     from db import Database
-    from message_queue import MessageQueue
-    from llm import LLMService
-    from memory.text_memory import TextMemory
-    from memory.vector_memory import VectorMemory
-    from memory.summarizer import ActivitySummarizer
-    from memory.extractor import MemoryExtractor
 
 
 @dataclass
@@ -40,64 +34,6 @@ class Container:
             db_path = self.config.data_dir / "recall.db"
             self._instances['database'] = Database(db_path)
         return self._instances['database']
-
-    @property
-    def text_memory(self) -> "TextMemory":
-        """获取文本记忆实例"""
-        if 'text_memory' not in self._instances:
-            from memory.text_memory import TextMemory
-            filepath = self.config.data_dir / "memory.md"
-            self._instances['text_memory'] = TextMemory(filepath)
-        return self._instances['text_memory']
-
-    @property
-    def vector_memory(self) -> "VectorMemory":
-        """获取向量记忆实例"""
-        if 'vector_memory' not in self._instances:
-            from memory.vector_memory import VectorMemory
-            chroma_dir = self.config.data_dir / "chroma"
-            self._instances['vector_memory'] = VectorMemory(chroma_dir)
-        return self._instances['vector_memory']
-
-    @property
-    def summarizer(self) -> "ActivitySummarizer":
-        """获取活动总结器实例"""
-        if 'summarizer' not in self._instances:
-            from memory.summarizer import ActivitySummarizer
-            summaries_dir = self.config.data_dir / "summaries" / "hourly"
-            self._instances['summarizer'] = ActivitySummarizer(summaries_dir)
-        return self._instances['summarizer']
-
-    @property
-    def extractor(self) -> "MemoryExtractor":
-        """获取记忆提取器实例"""
-        if 'extractor' not in self._instances:
-            from memory.extractor import MemoryExtractor
-            self._instances['extractor'] = MemoryExtractor(
-                text_memory=self.text_memory,
-                vector_memory=self.vector_memory
-            )
-        return self._instances['extractor']
-
-    @property
-    def message_queue(self) -> "MessageQueue":
-        """获取消息队列实例"""
-        if 'message_queue' not in self._instances:
-            from message_queue import MessageQueue
-            self._instances['message_queue'] = MessageQueue(self.database)
-        return self._instances['message_queue']
-
-    @property
-    def llm_service(self) -> "LLMService":
-        """获取LLM服务实例"""
-        if 'llm_service' not in self._instances:
-            from llm import LLMService
-            self._instances['llm_service'] = LLMService(
-                text_memory=self.text_memory,
-                vector_memory=self.vector_memory,
-                summarizer=self.summarizer
-            )
-        return self._instances['llm_service']
 
     def reset(self):
         """重置所有实例（用于测试）"""
