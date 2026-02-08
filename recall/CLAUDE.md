@@ -50,16 +50,16 @@ Claude Code 开发指导文件。
 conda run -n recall python main.py
 
 # 前端开发
-npm run dev --prefix "D:/BaiduSyncdisk/Desktop/recall/web/frontend"
+npm run dev --prefix "D:/BaiduSyncdisk/Desktop/ClawChater/recall/web/frontend"
 
 # 前端构建
-npm run build --prefix "D:/BaiduSyncdisk/Desktop/recall/web/frontend"
+npm run build --prefix "D:/BaiduSyncdisk/Desktop/ClawChater/recall/web/frontend"
 
 # Android 编译（需要用 cmd 执行 bat 文件）
-cmd //c "cd /d D:\\BaiduSyncdisk\\Desktop\\recall\\android\\RecallMobile && gradlew.bat assembleDebug"
+cmd //c "cd /d D:\\BaiduSyncdisk\\Desktop\\ClawChater\\recall\\android\\RecallMobile && gradlew.bat assembleDebug"
 
 # Android 安装到设备
-"C:/Users/ZZF/AppData/Local/Android/Sdk/platform-tools/adb.exe" install -r "D:/BaiduSyncdisk/Desktop/recall/android/RecallMobile/app/build/outputs/apk/debug/app-debug.apk"
+"C:/Users/ZZF/AppData/Local/Android/Sdk/platform-tools/adb.exe" install -r "D:/BaiduSyncdisk/Desktop/ClawChater/recall/android/RecallMobile/app/build/outputs/apk/debug/app-debug.apk"
 ```
 
 **注意**：
