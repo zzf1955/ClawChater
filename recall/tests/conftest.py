@@ -2,7 +2,6 @@
 import pytest
 import sys
 from pathlib import Path
-from unittest.mock import MagicMock
 
 # 确保项目根目录在 path 中
 PROJECT_ROOT = Path(__file__).parent.parent
@@ -73,67 +72,7 @@ def mock_config():
         'JPEG_QUALITY': 85,
         'GPU_USAGE_THRESHOLD': 30,
         'OCR_BATCH_SIZE': 10,
-        'AI_EXPLORE_INTERVAL': 300,
-        'AI_MIN_QUESTION_INTERVAL': 600,
-        'AI_ENABLED': True,
     }
-
-
-# ============ HTTP/LLM Fixtures ============
-
-@pytest.fixture
-def mock_httpx_response():
-    """Mock httpx 响应"""
-    mock_response = MagicMock()
-    mock_response.json.return_value = {
-        "choices": [{
-            "message": {
-                "content": "这是测试回复",
-                "tool_calls": []
-            }
-        }]
-    }
-    mock_response.raise_for_status = MagicMock()
-    return mock_response
-
-
-@pytest.fixture
-def mock_httpx_client(mock_httpx_response):
-    """Mock httpx.Client"""
-    mock_client = MagicMock()
-    mock_client.__enter__ = MagicMock(return_value=mock_client)
-    mock_client.__exit__ = MagicMock(return_value=False)
-    mock_client.post.return_value = mock_httpx_response
-    return mock_client
-
-
-@pytest.fixture
-def mock_llm_api(mock_httpx_client, monkeypatch):
-    """Mock LLM API 调用"""
-    import httpx
-    monkeypatch.setattr(httpx, "Client", lambda **kwargs: mock_httpx_client)
-    return mock_httpx_client
-
-
-# ============ 文件系统 Fixtures ============
-
-@pytest.fixture
-def temp_memory_file(temp_data_dir):
-    """临时记忆文件"""
-    memory_file = temp_data_dir / "memory.md"
-    memory_file.write_text(
-        "# 用户记忆\n\n## 基本信息\n\n## 偏好\n\n## 重要事项\n",
-        encoding="utf-8"
-    )
-    return memory_file
-
-
-@pytest.fixture
-def temp_summaries_dir(temp_data_dir):
-    """临时总结目录"""
-    summaries_dir = temp_data_dir / "summaries" / "hourly"
-    summaries_dir.mkdir(parents=True)
-    return summaries_dir
 
 
 # ============ 测试数据 Fixtures ============

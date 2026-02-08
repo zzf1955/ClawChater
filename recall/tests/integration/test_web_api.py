@@ -39,14 +39,3 @@ class TestWebAPI:
         assert response.status_code == 200
         data = response.get_json()
         assert isinstance(data, list)
-
-    def test_api_ai_messages(self, client, initialized_db):
-        """测试获取 AI 消息"""
-        # 添加测试消息
-        initialized_db.add_ai_message("user", "测试消息")
-
-        response = client.get('/api/ai/messages?since_id=0')
-        assert response.status_code == 200
-        data = response.get_json()
-        assert 'messages' in data
-        assert len(data['messages']) >= 1
