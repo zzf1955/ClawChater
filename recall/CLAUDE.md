@@ -77,21 +77,12 @@ recall/
 ├── app.py                     # 应用协调者
 ├── config.py                  # 配置管理
 ├── db.py                      # 数据库层
-├── llm.py                     # LLM 服务
-├── message_queue.py           # 消息队列
-├── curious_ai.py              # AI 探索
 ├── ocr_worker.py              # OCR 处理
 │
 ├── core/                      # 核心业务层
 │   ├── interfaces.py          # 接口定义
 │   ├── container.py           # 依赖注入容器
 │   └── capture.py             # 截图服务
-│
-├── memory/                    # 记忆系统
-│   ├── text_memory.py
-│   ├── vector_memory.py
-│   ├── summarizer.py
-│   └── extractor.py
 │
 ├── ui/                        # UI 层
 │   ├── tray.py                # 托盘管理
@@ -119,7 +110,7 @@ recall/
 
 ### 测试优先
 - 开发完功能或 debug 之前，先查找是否有现成的测试模块
-- 优先使用已有的测试接口进行测试（如 `scripts/test_tools.py`、`scripts/test_llm.py`）
+- 优先使用已有的测试接口进行测试
 - 新功能必须编写对应的单元测试（`tests/unit/`）
 - 运行测试：`pytest tests/ -v`
 

@@ -68,7 +68,6 @@ pnpm check                                   # 类型检查 + oxlint + oxfmt
 - **存储**：SQLite（`data/recall.db`），截图按 `screenshots/YYYY-MM-DD/HH/HHMMSS.jpg` 存放，OCR 文本为同名 `.txt`
 - **配置**：数据库热更新（`settings` 表）
 - **Web**：Flask REST API（:5000）+ Vue 3 前端
-- **记忆**：文本记忆（markdown）+ 向量记忆（ChromaDB）
 - **移动端**：Android 原生应用，用于捕捉手机端的生活细节
 
 关键约束：cuDNN 路径必须在 `import onnxruntime` **之前**加入 PATH。
@@ -107,7 +106,7 @@ OpenClaw 开发规范见 `openclaw/AGENTS.md`：
 
 | 命令 | 角色 | 说明 |
 |------|------|------|
-| `/plan` | Plan Agent | 需求澄清 → 技术方案 → 任务拆解（需要用户参与） |
+| `/planner` | Plan Agent | 需求澄清 → 技术方案 → 任务拆解（需要用户参与） |
 | `/worker` | Worker Agent | 自主领取任务 → 开发 → 测试 → 完成 |
 | `/status` | — | 查看任务看板 |
 
@@ -122,11 +121,11 @@ OpenClaw 开发规范见 `openclaw/AGENTS.md`：
 
 ### 任务文件
 
-每个任务是一个 `.md` 文件，包含 YAML front matter（id、priority、depends_on、module、branch、estimated_scope）和正文（背景、技术方案、验收标准、测试要求）。详见 `.claude/skills/plan.md`。
+每个任务是一个 `.md` 文件，包含 YAML front matter（id、priority、depends_on、module、branch、estimated_scope）和正文（背景、技术方案、验收标准、测试要求）。详见 `.claude/skills/planner/SKILL.md`。
 
 ### 工作流程
 
-1. 用户在一个终端运行 `/plan`，描述需求 → Plan Agent 澄清、设计、创建任务文件
+1. 用户在一个终端运行 `/planner`，描述需求 → Plan Agent 澄清、设计、创建任务文件
 2. 用户开新终端运行 `/worker` → Worker Agent 自动扫描、领取、开发、测试、完成
 3. 可同时开多个 `/worker` 终端并行开发不同任务
 4. 随时运行 `/status` 查看进度

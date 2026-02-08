@@ -20,15 +20,7 @@ recall/
 │
 ├── db.py                      # 数据库层（Database 类）
 │
-├── llm.py                     # LLM 服务（LLMService 类）
-├── message_queue.py           # 消息队列（MessageQueue 类）
-├── curious_ai.py              # AI 探索（CuriousAI 类）
-│
-├── memory/                    # 记忆系统
-│   ├── text_memory.py         # 文本记忆（TextMemory 类）
-│   ├── vector_memory.py       # 向量记忆（VectorMemory 类）
-│   ├── summarizer.py          # 活动总结（ActivitySummarizer 类）
-│   └── extractor.py           # 记忆提取（MemoryExtractor 类）
+├── ocr_worker.py              # OCR 处理
 │
 ├── ui/                        # UI 层
 │   ├── tray.py                # 托盘管理（TrayManager 类）
@@ -65,8 +57,6 @@ container = get_container()
 
 # 获取服务实例（懒加载）
 db = container.database
-llm = container.llm_service
-mq = container.message_queue
 ```
 
 ### 2. 接口定义
@@ -116,22 +106,16 @@ my_db = Database(custom_path)
 | `core/container.py` | 依赖注入容器 | config |
 | `core/capture.py` | 截图采集、差异检测 | db, config |
 | `db.py` | 数据库 CRUD | - |
-| `llm.py` | LLM API 调用 | config, memory |
-| `message_queue.py` | 用户-AI 消息队列 | db |
-| `curious_ai.py` | AI 主动探索 | llm, message_queue, memory |
-| `memory/*` | 记忆存储和检索 | config |
+| `ocr_worker.py` | OCR 处理 | db, config |
 | `ui/tray.py` | 系统托盘 | - |
 | `ui/window.py` | WebView 窗口 | - |
-| `web/app.py` | REST API | db, llm, message_queue |
+| `web/app.py` | REST API | db |
 
 ## 数据流
 
 ```
 截图采集流程：
 CaptureService → 截图 → 保存文件 → db.add_screenshot() → OCR Worker
-
-用户对话流程：
-Web API → message_queue.user_send() → CuriousAI → LLMService → message_queue.ai_send()
 
 配置热更新：
 Web API → config.set_all() → db.set_setting() → 各模块 config.get() 读取
@@ -153,10 +137,6 @@ def test_container(temp_data_dir):
 @pytest.fixture
 def initialized_db(test_container):
     """初始化的临时数据库"""
-
-@pytest.fixture
-def mock_llm_api(monkeypatch):
-    """Mock LLM API"""
 ```
 
 ### 运行测试
