@@ -1,4 +1,4 @@
-"""Screen Agent 主入口 — 后台持续浏览截图数据库，通过 Thinking Session 分析"""
+"""Screen Agent 主入口 — 后台持续浏览截图数据库，两步编排 Thinking + Chat"""
 import time
 import logging
 from datetime import datetime
@@ -33,7 +33,7 @@ def main():
     )
 
     last_check_time = None
-    last_thinking_time = 0
+    last_heartbeat_time = 0
 
     log.info("进入主循环...")
 
@@ -42,8 +42,8 @@ def main():
             now = time.time()
 
             # 检查冷却
-            if now - last_thinking_time < config.QUESTION_COOLDOWN:
-                remaining = int(config.QUESTION_COOLDOWN - (now - last_thinking_time))
+            if now - last_heartbeat_time < config.QUESTION_COOLDOWN:
+                remaining = int(config.QUESTION_COOLDOWN - (now - last_heartbeat_time))
                 log.debug(f"冷却中，剩余 {remaining}s")
                 time.sleep(min(60, remaining))
                 continue
@@ -63,12 +63,16 @@ def main():
 
             log.info(f"获取到 {len(screenshots)} 条截图摘要")
 
-            # 发送到 Thinking Session（agent 分析 + 写 intents.json）
-            log.info("发送到 Thinking Session...")
-            success = openclaw.send_to_thinking_session(screenshots)
+            # 两步编排：Thinking → 等待 → Chat
+            log.info("开始 Heartbeat 流程...")
+            success = openclaw.run_heartbeat(
+                screenshots,
+                channel=config.TARGET_CHANNEL,
+                to=config.TARGET_USER_ID
+            )
             if success:
-                last_thinking_time = time.time()
-                log.info("Thinking Session 处理完成")
+                last_heartbeat_time = time.time()
+                log.info("Heartbeat 完成")
 
             # 等待下一轮
             time.sleep(config.ANALYSIS_INTERVAL)

@@ -1,4 +1,5 @@
 """OpenClaw Hooks API 客户端（支持 dry-run 模式）"""
+import time
 import httpx
 import logging
 from typing import List, Dict
@@ -19,6 +20,11 @@ THINKING_PROMPT_TEMPLATE = """你是一个屏幕活动分析助手。你的任�
 
 ## 当前 OCR 数据
 {ocr_summary}"""
+
+CHAT_TRIGGER_MESSAGE = "有新的屏幕观察，请查看 intents.json 中的待处理意图，选择合适的话题和用户聊天。"
+
+# Thinking Session 完成等待时间（秒）
+THINKING_WAIT_SECONDS = 30
 
 
 class OpenClawClient:
@@ -53,7 +59,6 @@ class OpenClawClient:
             print("[Screen Agent -> Thinking Session]")
             print(f"Screenshots: {len(screenshots)}")
             print(f"OCR summary length: {len(ocr_summary)} chars")
-            print(f"Payload keys: {list(payload.keys())}")
             print(f"deliver: {payload['deliver']}")
             print(f"sessionKey: {payload['sessionKey']}")
             print(f"{'='*60}\n")
@@ -74,6 +79,73 @@ class OpenClawClient:
         except Exception as e:
             log.error(f"Thinking Session 调用失败: {e}")
             return False
+
+    def trigger_chat_session(self, channel: str = "telegram", to: str = "") -> bool:
+        """触发 Chat Agent 检查意图并主动聊天
+
+        发送触发消息到 Chat Session，deliver=True 投递到 Telegram。
+        """
+        payload = {
+            "message": CHAT_TRIGGER_MESSAGE,
+            "name": "Screen Agent",
+            "channel": channel,
+            "deliver": True,
+            "wakeMode": "now",
+            "sessionKey": "hook:screen-agent-chat",
+        }
+        if to:
+            payload["to"] = to
+
+        if self.dry_run:
+            log.info(f"[DRY-RUN] Chat Session trigger -> {channel}")
+            print(f"\n{'='*60}")
+            print(f"[Screen Agent -> Chat Session ({channel})]")
+            print(f"Message: {CHAT_TRIGGER_MESSAGE}")
+            print(f"deliver: True")
+            print(f"sessionKey: {payload['sessionKey']}")
+            print(f"{'='*60}\n")
+            return True
+
+        try:
+            resp = self.client.post(
+                f"{self.base_url}/hooks/agent",
+                headers={
+                    "Authorization": f"Bearer {self.token}",
+                    "Content-Type": "application/json"
+                },
+                json=payload
+            )
+            resp.raise_for_status()
+            log.info(f"Chat Session 已触发 -> {channel}")
+            return True
+        except Exception as e:
+            log.error(f"Chat Session 触发失败: {e}")
+            return False
+
+    def run_heartbeat(self, screenshots: List[Dict],
+                      channel: str = "telegram", to: str = "") -> bool:
+        """完整的 heartbeat 流程：Thinking → 等待 → Chat
+
+        Step 1: 发送 OCR 到 Thinking Session（分析 + 写 intents.json）
+        Step 2: 等待 Thinking 完成
+        Step 3: 触发 Chat Session（读 intents → 和用户聊天）
+        """
+        # Step 1: Thinking
+        log.info("Heartbeat Step 1: Thinking Session...")
+        if not self.send_to_thinking_session(screenshots):
+            log.warning("Thinking Session 失败，跳过 Chat 触发")
+            return False
+
+        # Step 2: 等待 Thinking 完成
+        if not self.dry_run:
+            log.info(f"等待 Thinking 完成 ({THINKING_WAIT_SECONDS}s)...")
+            time.sleep(THINKING_WAIT_SECONDS)
+        else:
+            log.info(f"[DRY-RUN] 跳过等待 {THINKING_WAIT_SECONDS}s")
+
+        # Step 3: 触发 Chat
+        log.info("Heartbeat Step 2: Chat Session...")
+        return self.trigger_chat_session(channel=channel, to=to)
 
     def send_message(self, message: str, channel: str = "telegram", to: str = "") -> bool:
         """发送主动消息
