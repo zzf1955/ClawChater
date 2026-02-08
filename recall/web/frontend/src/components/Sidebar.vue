@@ -10,8 +10,6 @@ let timer = null
 
 const navItems = [
   { id: 'browser', label: '截图浏览', icon: '📷' },
-  { id: 'chat', label: 'AI 助手', icon: '💬' },
-  { id: 'ai-log', label: 'AI 日志', icon: '📋' },
   { id: 'config', label: '配置', icon: '⚙️' }
 ]
 

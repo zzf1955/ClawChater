@@ -9,9 +9,6 @@ const config = ref({
   JPEG_QUALITY: 85,
   GPU_USAGE_THRESHOLD: 30,
   OCR_BATCH_SIZE: 10,
-  AI_EXPLORE_INTERVAL: 300,
-  AI_MIN_QUESTION_INTERVAL: 600,
-  AI_ENABLED: true
 })
 
 const saving = ref(false)
@@ -45,9 +42,6 @@ function resetConfig() {
     JPEG_QUALITY: 85,
     GPU_USAGE_THRESHOLD: 30,
     OCR_BATCH_SIZE: 10,
-    AI_EXPLORE_INTERVAL: 300,
-    AI_MIN_QUESTION_INTERVAL: 600,
-    AI_ENABLED: true
   }
 }
 
@@ -148,50 +142,6 @@ onMounted(loadConfig)
               max="100"
               class="w-32 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
             />
-          </div>
-        </div>
-      </div>
-
-      <!-- AI 设置 -->
-      <div class="bg-white rounded-lg border border-gray-200 p-5 mb-6">
-        <h3 class="text-base font-medium text-gray-700 mb-4">AI 设置</h3>
-
-        <div class="space-y-5">
-          <!-- AI 主动探索开关 -->
-          <div class="flex items-center gap-3">
-            <input
-              type="checkbox"
-              v-model="config.AI_ENABLED"
-              id="ai-enabled"
-              class="w-4 h-4 accent-primary-600"
-            />
-            <label for="ai-enabled" class="text-sm text-gray-600">启用 AI 主动探索</label>
-          </div>
-
-          <!-- AI 探索间隔 -->
-          <div>
-            <label class="block text-sm text-gray-600 mb-2">探索间隔 (秒)</label>
-            <input
-              type="number"
-              v-model.number="config.AI_EXPLORE_INTERVAL"
-              min="60"
-              max="3600"
-              class="w-32 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-            />
-            <span class="text-xs text-gray-400 ml-2">AI 多久探索一次用户活动</span>
-          </div>
-
-          <!-- AI 最小提问间隔 -->
-          <div>
-            <label class="block text-sm text-gray-600 mb-2">最小提问间隔 (秒)</label>
-            <input
-              type="number"
-              v-model.number="config.AI_MIN_QUESTION_INTERVAL"
-              min="60"
-              max="7200"
-              class="w-32 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-            />
-            <span class="text-xs text-gray-400 ml-2">避免 AI 频繁提问打扰用户</span>
           </div>
         </div>
       </div>
