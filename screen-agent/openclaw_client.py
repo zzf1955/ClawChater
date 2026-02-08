@@ -1,8 +1,24 @@
 """OpenClaw Hooks API 客户端（支持 dry-run 模式）"""
 import httpx
 import logging
+from typing import List, Dict
 
 log = logging.getLogger(__name__)
+
+THINKING_PROMPT_TEMPLATE = """你是一个屏幕活动分析助手。你的任务是分析用户的屏幕活动，生成观察和问题。
+
+## 你的工作流程
+1. 用 read 工具读取 facts.json，了解已知事实（避免重复提问）
+2. 分析下面的 OCR 数据
+3. 如果发现值得聊的内容，用 read 工具读取 intents.json，然后用 write 工具更新它
+4. 只添加新意图（status: "pending"），保留未处理的旧意图
+5. 如果没有值得聊的内容，不需要更新 intents.json
+
+## 意图格式
+每条意图包含：id（i-NNN）、created_at、type（observation/curiosity/question）、content、context、status
+
+## 当前 OCR 数据
+{ocr_summary}"""
 
 
 class OpenClawClient:
@@ -13,6 +29,51 @@ class OpenClawClient:
         self.token = token
         self.dry_run = dry_run
         self.client = httpx.Client(timeout=30.0)
+
+    def send_to_thinking_session(self, screenshots: List[Dict]) -> bool:
+        """发送 OCR 数据到 Thinking Session
+
+        使用持久化 sessionKey，deliver=False（不投递到 Telegram）。
+        Agent 会分析 OCR 数据并写入 intents.json。
+        """
+        ocr_summary = self._format_ocr_summary(screenshots)
+        message = THINKING_PROMPT_TEMPLATE.format(ocr_summary=ocr_summary)
+
+        payload = {
+            "message": message,
+            "name": "Screen Agent",
+            "sessionKey": "hook:screen-agent-thinking",
+            "deliver": False,
+            "wakeMode": "now",
+        }
+
+        if self.dry_run:
+            log.info(f"[DRY-RUN] Thinking Session: {len(screenshots)} 条截图")
+            print(f"\n{'='*60}")
+            print("[Screen Agent -> Thinking Session]")
+            print(f"Screenshots: {len(screenshots)}")
+            print(f"OCR summary length: {len(ocr_summary)} chars")
+            print(f"Payload keys: {list(payload.keys())}")
+            print(f"deliver: {payload['deliver']}")
+            print(f"sessionKey: {payload['sessionKey']}")
+            print(f"{'='*60}\n")
+            return True
+
+        try:
+            resp = self.client.post(
+                f"{self.base_url}/hooks/agent",
+                headers={
+                    "Authorization": f"Bearer {self.token}",
+                    "Content-Type": "application/json"
+                },
+                json=payload
+            )
+            resp.raise_for_status()
+            log.info(f"Thinking Session 已处理 {len(screenshots)} 条截图")
+            return True
+        except Exception as e:
+            log.error(f"Thinking Session 调用失败: {e}")
+            return False
 
     def send_message(self, message: str, channel: str = "telegram", to: str = "") -> bool:
         """发送主动消息
@@ -53,3 +114,17 @@ class OpenClawClient:
         except Exception as e:
             log.error(f"发送消息失败: {e}")
             return False
+
+    @staticmethod
+    def _format_ocr_summary(screenshots: List[Dict]) -> str:
+        """将截图列表格式化为 OCR 摘要文本"""
+        lines = []
+        for s in screenshots[:30]:
+            ts = s.get('timestamp', '')
+            title = s.get('window_title', '')
+            process = s.get('process_name', '')
+            ocr = s.get('ocr_preview', '')
+            lines.append(f"[{ts}] {process} - {title}")
+            if ocr:
+                lines.append(f"  内容: {ocr[:150]}")
+        return '\n'.join(lines)

@@ -1,4 +1,4 @@
-"""Screen Agent 主入口 — 后台持续浏览截图数据库，主动发消息"""
+"""Screen Agent 主入口 — 后台持续浏览截图数据库，通过 Thinking Session 分析"""
 import time
 import logging
 from datetime import datetime
@@ -6,7 +6,6 @@ from datetime import datetime
 import config
 from recall_client import RecallClient
 from openclaw_client import OpenClawClient
-from analyzer import Analyzer
 
 # 日志配置
 logging.basicConfig(
@@ -32,14 +31,9 @@ def main():
         config.OPENCLAW_HOOK_TOKEN,
         dry_run=config.DRY_RUN
     )
-    analyzer = Analyzer(
-        config.LLM_API_KEY,
-        config.LLM_BASE_URL,
-        config.LLM_MODEL
-    )
 
     last_check_time = None
-    last_question_time = 0
+    last_thinking_time = 0
 
     log.info("进入主循环...")
 
@@ -47,10 +41,10 @@ def main():
         while True:
             now = time.time()
 
-            # 检查提问冷却
-            if now - last_question_time < config.QUESTION_COOLDOWN:
-                remaining = int(config.QUESTION_COOLDOWN - (now - last_question_time))
-                log.debug(f"提问冷却中，剩余 {remaining}s")
+            # 检查冷却
+            if now - last_thinking_time < config.QUESTION_COOLDOWN:
+                remaining = int(config.QUESTION_COOLDOWN - (now - last_thinking_time))
+                log.debug(f"冷却中，剩余 {remaining}s")
                 time.sleep(min(60, remaining))
                 continue
 
@@ -69,22 +63,12 @@ def main():
 
             log.info(f"获取到 {len(screenshots)} 条截图摘要")
 
-            # LLM 分析
-            log.info("调用 LLM 分析...")
-            question = analyzer.analyze(screenshots)
-
-            if question:
-                # 发送消息
-                success = openclaw.send_message(
-                    question,
-                    channel=config.TARGET_CHANNEL,
-                    to=config.TARGET_USER_ID
-                )
-                if success:
-                    last_question_time = time.time()
-                    log.info("消息发送成功")
-            else:
-                log.info("本轮无需提问")
+            # 发送到 Thinking Session（agent 分析 + 写 intents.json）
+            log.info("发送到 Thinking Session...")
+            success = openclaw.send_to_thinking_session(screenshots)
+            if success:
+                last_thinking_time = time.time()
+                log.info("Thinking Session 处理完成")
 
             # 等待下一轮
             time.sleep(config.ANALYSIS_INTERVAL)
