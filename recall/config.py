@@ -70,16 +70,6 @@ def init_defaults():
             db.set_setting(key, value)
 
 
-# ============ 兼容旧代码的模块级变量 ============
-# 这些变量在模块加载时初始化，不支持热更新
-# 新代码应使用 config.get('KEY') 方式读取
-
+# ============ 路径常量 ============
+# SCREENSHOT_DIR 是路径常量，不需要热更新，保留为模块级变量
 SCREENSHOT_DIR = DEFAULT_SETTINGS['SCREENSHOT_DIR']
-CHANGE_THRESHOLD = 0.8
-FORCE_CAPTURE_INTERVAL = 1111
-MIN_CAPTURE_INTERVAL = 5
-JPEG_QUALITY = 100
-GPU_USAGE_THRESHOLD = 30
-OCR_BATCH_SIZE = 10
-SIMILARITY_THRESHOLD = DEFAULT_SETTINGS['SIMILARITY_THRESHOLD']
-GROUP_TIME_WINDOW = DEFAULT_SETTINGS['GROUP_TIME_WINDOW']

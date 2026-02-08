@@ -94,12 +94,12 @@ class OCRWorker:
         while self._running:
             try:
                 # 检查GPU是否空闲
-                if not is_gpu_idle(config.GPU_USAGE_THRESHOLD):
+                if not is_gpu_idle(config.get('GPU_USAGE_THRESHOLD')):
                     time.sleep(5)
                     continue
 
                 # 获取待处理任务
-                pending = db.get_pending_ocr(config.OCR_BATCH_SIZE)
+                pending = db.get_pending_ocr(config.get('OCR_BATCH_SIZE'))
                 if not pending:
                     time.sleep(10)
                     continue
@@ -109,7 +109,7 @@ class OCRWorker:
                     if not self._running:
                         break
                     # 再次检查GPU
-                    if not is_gpu_idle(config.GPU_USAGE_THRESHOLD):
+                    if not is_gpu_idle(config.get('GPU_USAGE_THRESHOLD')):
                         log.info("GPU忙碌，暂停OCR")
                         break
                     self.process_one(item['id'], item['path'])
