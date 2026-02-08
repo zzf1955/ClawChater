@@ -16,8 +16,6 @@ class TestDatabaseInit:
 
             assert 'screenshots' in table_names
             assert 'groups' in table_names
-            assert 'ai_messages' in table_names
-            assert 'ai_logs' in table_names
             assert 'settings' in table_names
 
 
@@ -87,29 +85,3 @@ class TestSettingsOperations:
         assert result["KEY1"] == "value1"
         assert result["KEY2"] == 42
         assert result["KEY3"] is True
-
-
-class TestAIMessageOperations:
-    """AI 消息操作测试"""
-
-    def test_add_ai_message(self, initialized_db):
-        """测试添加 AI 消息"""
-        msg_id = initialized_db.add_ai_message("user", "测试消息")
-        assert msg_id > 0
-
-    def test_get_ai_messages_since(self, initialized_db):
-        """测试获取指定 ID 之后的消息"""
-        id1 = initialized_db.add_ai_message("user", "消息1")
-        id2 = initialized_db.add_ai_message("assistant", "消息2")
-
-        messages = initialized_db.get_ai_messages_since(id1)
-        assert len(messages) == 1
-        assert messages[0]['content'] == "消息2"
-
-    def test_get_recent_ai_messages(self, initialized_db):
-        """测试获取最近的消息"""
-        initialized_db.add_ai_message("user", "消息1")
-        initialized_db.add_ai_message("assistant", "消息2")
-
-        messages = initialized_db.get_recent_ai_messages(limit=10)
-        assert len(messages) == 2
