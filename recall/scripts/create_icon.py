@@ -1,5 +1,8 @@
 """生成Recall托盘图标 - 仅圆弧"""
+from pathlib import Path
 from PIL import Image, ImageDraw
+
+ASSETS_DIR = Path(__file__).parent.parent / "assets"
 
 def create_recall_icon():
     """创建简洁的圆弧图标"""
@@ -32,17 +35,17 @@ def create_recall_icon():
         images.append(img)
 
     # 保存
-    icon_path = "D:/BaiduSyncdisk/Desktop/recall/assets/icon.ico"
+    icon_path = ASSETS_DIR / "icon.ico"
     images[0].save(
-        icon_path,
+        str(icon_path),
         format='ICO',
         sizes=[(s, s) for s in sizes],
         append_images=images[1:]
     )
     print(f"图标已保存到: {icon_path}")
 
-    png_path = "D:/BaiduSyncdisk/Desktop/recall/assets/icon.png"
-    images[-1].save(png_path, format='PNG')
+    png_path = ASSETS_DIR / "icon.png"
+    images[-1].save(str(png_path), format='PNG')
     print(f"PNG预览已保存到: {png_path}")
 
 if __name__ == "__main__":

@@ -1,6 +1,7 @@
 """测试配置系统"""
 import sys
-sys.path.insert(0, 'D:/BaiduSyncdisk/Desktop/recall')
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import db
 import config
@@ -10,18 +11,14 @@ db.init_db()
 print("=== 当前数据库配置 ===")
 print(db.get_all_settings())
 
-print("\n=== 测试修改 AI 配置 ===")
-db.set_setting('AI_EXPLORE_INTERVAL', 999)
-db.set_setting('AI_ENABLED', False)
-
-print("AI_EXPLORE_INTERVAL:", db.get_setting('AI_EXPLORE_INTERVAL'))
-print("AI_ENABLED:", db.get_setting('AI_ENABLED'))
-
 print("\n=== 通过 config.get() 读取 ===")
-print("AI_EXPLORE_INTERVAL:", config.get('AI_EXPLORE_INTERVAL'))
-print("AI_ENABLED:", config.get('AI_ENABLED'))
+for key in config.DEFAULT_SETTINGS:
+    print(f"{key}: {config.get(key)}")
+
+print("\n=== 测试修改配置 ===")
+db.set_setting('JPEG_QUALITY', 90)
+print("JPEG_QUALITY:", config.get('JPEG_QUALITY'))
 
 print("\n=== 恢复默认值 ===")
-db.set_setting('AI_EXPLORE_INTERVAL', 300)
-db.set_setting('AI_ENABLED', True)
+db.set_setting('JPEG_QUALITY', config.DEFAULT_SETTINGS['JPEG_QUALITY'])
 print("已恢复")

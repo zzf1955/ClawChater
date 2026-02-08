@@ -1,6 +1,7 @@
 """测试 API 保存配置"""
 import sys
-sys.path.insert(0, 'D:/BaiduSyncdisk/Desktop/recall')
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import db
 import config
@@ -18,9 +19,6 @@ frontend_config = {
     'JPEG_QUALITY': 90,
     'GPU_USAGE_THRESHOLD': 50,
     'OCR_BATCH_SIZE': 20,
-    'AI_EXPLORE_INTERVAL': 120,
-    'AI_MIN_QUESTION_INTERVAL': 300,
-    'AI_ENABLED': False
 }
 
 print("\n=== 模拟前端保存 ===")
