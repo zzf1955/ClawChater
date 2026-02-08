@@ -138,10 +138,14 @@ class RecallApp:
 
     def _start_web_server(self):
         """启动Web服务器"""
-        from web.app import app
-        import logging as flask_logging
-        flask_logging.getLogger('werkzeug').setLevel(flask_logging.ERROR)
-        app.run(host='127.0.0.1', port=WEB_PORT, debug=False, use_reloader=False)
+        try:
+            from web.app import app
+            import logging as flask_logging
+            flask_logging.getLogger('werkzeug').setLevel(flask_logging.ERROR)
+            log.info(f"Web 服务器启动中 (port={WEB_PORT})...")
+            app.run(host='127.0.0.1', port=WEB_PORT, debug=False, use_reloader=False)
+        except Exception as e:
+            log.error(f"Web 服务器启动失败: {e}", exc_info=True)
 
     def run(self):
         """运行应用"""

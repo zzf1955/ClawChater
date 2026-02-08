@@ -39,3 +39,17 @@ class TestWebAPI:
         assert response.status_code == 200
         data = response.get_json()
         assert isinstance(data, list)
+
+    def test_index_serves_frontend(self, client):
+        """测试首页返回 Vue 前端"""
+        response = client.get('/')
+        assert response.status_code == 200
+        # 应该返回 HTML（Vue SPA 或提示信息）
+        assert response.content_type.startswith('text/html')
+
+    def test_health_endpoint(self, client):
+        """测试健康检查接口"""
+        response = client.get('/api/health')
+        assert response.status_code == 200
+        data = response.get_json()
+        assert data['status'] == 'ok'
