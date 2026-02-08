@@ -279,6 +279,43 @@ def api_health():
     })
 
 
+# ============ Summaries API ============
+
+@app.route('/api/summaries', methods=['POST'])
+def api_post_summary():
+    """写入摘要
+
+    Body: { "start_time": "ISO8601", "end_time": "ISO8601",
+            "summary": "...", "activity_type": "..." }
+    """
+    data = request.json
+    if not data:
+        return jsonify({'error': '需要 JSON body'}), 400
+
+    start_time = data.get('start_time')
+    end_time = data.get('end_time')
+    summary = data.get('summary')
+
+    if not all([start_time, end_time, summary]):
+        return jsonify({'error': '缺少必填字段: start_time, end_time, summary'}), 400
+
+    activity_type = data.get('activity_type')
+    sid = db.insert_summary(start_time, end_time, summary, activity_type)
+    return jsonify({'id': sid}), 201
+
+
+@app.route('/api/summaries', methods=['GET'])
+def api_get_summaries():
+    """查询最近 N 小时的摘要
+
+    Query Parameters:
+        hours: int, 往前查询多少小时 (默认 24)
+    """
+    hours = request.args.get('hours', 24, type=int)
+    summaries = db.get_summaries(hours)
+    return jsonify(summaries)
+
+
 if __name__ == '__main__':
     db.init_db()
     app.run(host='127.0.0.1', port=5000, debug=True)

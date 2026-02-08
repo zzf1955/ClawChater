@@ -81,6 +81,16 @@ class Database:
                     value TEXT NOT NULL,
                     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
                 );
+
+                CREATE TABLE IF NOT EXISTS summaries (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    start_time DATETIME NOT NULL,
+                    end_time DATETIME NOT NULL,
+                    summary TEXT NOT NULL,
+                    activity_type TEXT,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                );
+                CREATE INDEX IF NOT EXISTS idx_summaries_time ON summaries(start_time, end_time);
             """)
 
             log.info(f"数据库初始化完成: {self.db_path}")
@@ -220,6 +230,41 @@ class Database:
                     ON CONFLICT(key) DO UPDATE SET value = ?, updated_at = datetime('now')
                 """, (key, json.dumps(value), json.dumps(value)))
 
+    # ============ 摘要相关方法 ============
+
+    def insert_summary(self, start_time: str, end_time: str,
+                       summary: str, activity_type: str = None) -> int:
+        """插入摘要记录，返回 ID"""
+        with self.get_connection() as conn:
+            cursor = conn.execute(
+                """INSERT INTO summaries (start_time, end_time, summary, activity_type)
+                   VALUES (?, ?, ?, ?)""",
+                (start_time, end_time, summary, activity_type)
+            )
+            return cursor.lastrowid
+
+    def get_summaries(self, hours: int = 24) -> List[Dict[str, Any]]:
+        """获取最近 N 小时的摘要"""
+        with self.get_connection() as conn:
+            rows = conn.execute("""
+                SELECT id, start_time, end_time, summary, activity_type, created_at
+                FROM summaries
+                WHERE start_time > datetime('now', ? || ' hours')
+                ORDER BY start_time DESC
+            """, (f"-{hours}",)).fetchall()
+            return [dict(row) for row in rows]
+
+    def get_latest_summary(self) -> Optional[Dict[str, Any]]:
+        """获取最新一条摘要"""
+        with self.get_connection() as conn:
+            row = conn.execute("""
+                SELECT id, start_time, end_time, summary, activity_type, created_at
+                FROM summaries
+                ORDER BY end_time DESC
+                LIMIT 1
+            """).fetchone()
+            return dict(row) if row else None
+
 
 # ============ 向后兼容层 ============
 # 以下函数使用默认数据库实例，保持与旧代码的兼容性
@@ -320,3 +365,19 @@ def get_all_settings() -> Dict[str, Any]:
 def set_all_settings(settings: Dict[str, Any]):
     """批量设置配置（向后兼容）"""
     return _get_db().set_all_settings(settings)
+
+
+def insert_summary(start_time: str, end_time: str,
+                   summary: str, activity_type: str = None) -> int:
+    """插入摘要记录（向后兼容）"""
+    return _get_db().insert_summary(start_time, end_time, summary, activity_type)
+
+
+def get_summaries(hours: int = 24) -> List[Dict[str, Any]]:
+    """获取最近 N 小时的摘要（向后兼容）"""
+    return _get_db().get_summaries(hours)
+
+
+def get_latest_summary() -> Optional[Dict[str, Any]]:
+    """获取最新一条摘要（向后兼容）"""
+    return _get_db().get_latest_summary()

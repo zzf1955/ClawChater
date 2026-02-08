@@ -85,3 +85,80 @@ class TestSettingsOperations:
         assert result["KEY1"] == "value1"
         assert result["KEY2"] == 42
         assert result["KEY3"] is True
+
+
+class TestSummaryOperations:
+    """摘要操作测试"""
+
+    def test_insert_summary(self, initialized_db):
+        """测试插入摘要"""
+        sid = initialized_db.insert_summary(
+            start_time="2024-01-01T10:00:00",
+            end_time="2024-01-01T10:30:00",
+            summary="用户在写代码",
+            activity_type="work"
+        )
+        assert sid > 0
+
+    def test_get_summaries_empty(self, initialized_db):
+        """测试空数据时返回空列表"""
+        result = initialized_db.get_summaries(hours=24)
+        assert result == []
+
+    def test_get_summaries_returns_recent(self, initialized_db):
+        """测试按时间范围查询摘要"""
+        # 插入一条"最近"的摘要（用 datetime('now') 附近的时间）
+        now = datetime.now()
+        start = now.replace(minute=0, second=0).isoformat()
+        end = now.isoformat()
+        initialized_db.insert_summary(start, end, "最近的活动", "work")
+
+        # 插入一条很久以前的摘要
+        initialized_db.insert_summary(
+            "2020-01-01T00:00:00", "2020-01-01T00:30:00",
+            "很久以前的活动", "other"
+        )
+
+        result = initialized_db.get_summaries(hours=1)
+        assert len(result) == 1
+        assert result[0]['summary'] == "最近的活动"
+
+    def test_get_latest_summary_empty(self, initialized_db):
+        """测试空数据时 get_latest_summary 返回 None"""
+        result = initialized_db.get_latest_summary()
+        assert result is None
+
+    def test_get_latest_summary(self, initialized_db):
+        """测试获取最新摘要"""
+        initialized_db.insert_summary(
+            "2024-01-01T10:00:00", "2024-01-01T10:30:00",
+            "第一条", "work"
+        )
+        initialized_db.insert_summary(
+            "2024-01-01T11:00:00", "2024-01-01T11:30:00",
+            "第二条", "entertainment"
+        )
+
+        result = initialized_db.get_latest_summary()
+        assert result is not None
+        assert result['summary'] == "第二条"
+        assert result['activity_type'] == "entertainment"
+
+    def test_insert_summary_without_activity_type(self, initialized_db):
+        """测试不传 activity_type 时插入成功"""
+        sid = initialized_db.insert_summary(
+            "2024-01-01T10:00:00", "2024-01-01T10:30:00",
+            "无分类摘要"
+        )
+        assert sid > 0
+        result = initialized_db.get_latest_summary()
+        assert result['activity_type'] is None
+
+    def test_init_db_creates_summaries_table(self, initialized_db):
+        """测试 init_db 创建 summaries 表"""
+        with initialized_db.get_connection() as conn:
+            tables = conn.execute(
+                "SELECT name FROM sqlite_master WHERE type='table'"
+            ).fetchall()
+            table_names = [t['name'] for t in tables]
+            assert 'summaries' in table_names
