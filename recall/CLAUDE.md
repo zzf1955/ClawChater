@@ -2,16 +2,9 @@
 
 Claude Code 开发指导文件。
 
-## 工作流程 Skills
+## 工作流程
 
-使用 `/start` 或 `/debug` 命令触发对应的工作流程：
-
-| 命令 | 用途 |
-|------|------|
-| `/start` | 开始开发第一个待开发需求 |
-| `/debug` | 开始修复第一个待修复 bug |
-
-详细流程定义在 `.claude/skills/` 目录下。
+Recall 模块的开发通过项目根目录的多 Agent 协作系统管理（`/planner`、`/worker`、`/status`）。详见根目录 `CLAUDE.md` 的「多 Agent 协作」一节。
 
 ## 文档体系
 
@@ -46,7 +39,7 @@ Claude Code 开发指导文件。
 **重要**：Claude Code 的 Bash 工具在 Windows 上运行于 Git Bash 环境，不要使用 `powershell -Command` 包装命令。
 
 ```bash
-# PC 启动
+# PC 启动 (启动后访问 http://127.0.0.1:5000)
 conda run -n recall python main.py
 
 # 前端开发
@@ -83,10 +76,6 @@ recall/
 │   ├── interfaces.py          # 接口定义
 │   ├── container.py           # 依赖注入容器
 │   └── capture.py             # 截图服务
-│
-├── ui/                        # UI 层
-│   ├── tray.py                # 托盘管理
-│   └── window.py              # 窗口管理
 │
 ├── web/                       # Web 层
 │   ├── app.py                 # Flask API

@@ -8,7 +8,7 @@ const currentView = ref('browser')
 </script>
 
 <template>
-  <div class="flex h-screen bg-gray-50">
+  <div class="flex h-screen bg-white">
     <!-- 侧边栏 -->
     <Sidebar v-model:current="currentView" />
 

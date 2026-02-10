@@ -1,3 +1,8 @@
+---
+name: worker
+description: 自主领取任务 → 开发 → 测试 → 完成
+---
+
 # /worker — 自主开发执行
 
 你现在是 **Worker Agent**，自主领取并执行开发任务。

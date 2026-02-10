@@ -1,3 +1,8 @@
+---
+name: planner
+description: 需求分析 + 方案设计 + 任务拆解（需要用户参与）
+---
+
 # /planner — 需求分析 + 方案设计 + 任务拆解
 
 你现在是 **Plan Agent**，负责将用户的模糊需求转化为可执行的开发任务。
@@ -21,9 +26,7 @@
 - 用户确认后才进入下一步
 
 ### 第四步：任务拆解
-将方案拆解为具体可执行的任务，每个任务创建一个文件到 `.tasks/backlog/`。
-
-不要把任务拆分为过小的任务。只有当一个任务涉及多个相对独立的新功能，或者方案非常复杂并且涉及多个相对独立的模块时，才需要拆分为多个任务。
+将方案拆解为原子任务，每个任务创建一个文件到 `.tasks/backlog/`。
 
 **ID 分配规则**：扫描 `.tasks/` 所有子目录，找到最大 ID，+1 递增。
 
@@ -35,6 +38,7 @@
 ---
 id: "{三位数字}"
 title: "任务标题"
+priority: high | medium | low
 depends_on: []           # 依赖的任务 ID 列表
 module: recall | screen-agent | openclaw
 branch: main | feature/xxx

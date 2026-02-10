@@ -1,6 +1,6 @@
 # Recall
 
-Windows Recall 的本地开源替代品，结合 LLM 聊天功能。
+Windows Recall 的本地开源替代品。
 
 ## 项目概述
 
@@ -14,8 +14,7 @@ Windows Recall 的本地开源替代品，结合 LLM 聊天功能。
 ### PC 端（已完成）
 - [x] 屏幕变化检测 + 自动截图
 - [x] OCR 文字识别（GPU 加速）
-- [x] 系统托盘 + Web GUI
-- [x] 截图浏览、搜索、预览
+- [x] Web UI 截图浏览、搜索、预览
 
 ### Android 端（基础框架已完成）
 - [x] 后台截图服务（MediaProjection + 前台服务）
@@ -24,21 +23,14 @@ Windows Recall 的本地开源替代品，结合 LLM 聊天功能。
 - [x] 设置界面（截图间隔、变化阈值、强制间隔）
 - [ ] WiFi 同步到 PC
 
-### LLM 聊天（开发中）
-- [ ] 接入 LLM API
-- [ ] 基于截图/OCR 内容的问答
-- [ ] 时间线回溯查询
-
 ## 技术栈
 
 | 模块 | 技术 |
 |------|------|
 | PC 后端 | Python 3.11, Flask, SQLite |
 | PC 前端 | Vue 3, Vite, Tailwind CSS |
-| PC GUI | PyWebView, pystray |
 | OCR | RapidOCR + onnxruntime-gpu |
 | Android | Kotlin, MediaProjection API |
-| LLM | 待定 |
 
 ## 快速开始
 

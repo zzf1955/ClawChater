@@ -8,8 +8,6 @@ imagehash
 pywin32
 psutil
 flask
-pywebview
-pystray
 requests
 httpx
 PySide6

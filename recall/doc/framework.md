@@ -4,6 +4,8 @@
 
 Recall 采用**分层架构 + 依赖注入**模式，将业务逻辑与 UI 分离，支持单元测试和模块化开发。
 
+**UI 模式**: 纯 Web UI，通过浏览器访问 http://127.0.0.1:5000
+
 ## 目录结构
 
 ```
@@ -22,12 +24,8 @@ recall/
 │
 ├── ocr_worker.py              # OCR 处理
 │
-├── ui/                        # UI 层
-│   ├── tray.py                # 托盘管理（TrayManager 类）
-│   └── window.py              # 窗口管理（WindowManager 类）
-│
-├── web/                       # Web API 层
-│   ├── app.py                 # Flask 路由
+├── web/                       # Web 层
+│   ├── app.py                 # Flask REST API
 │   └── frontend/              # Vue 3 前端
 │
 ├── utils/                     # 工具模块
@@ -107,8 +105,6 @@ my_db = Database(custom_path)
 | `core/capture.py` | 截图采集、差异检测 | db, config |
 | `db.py` | 数据库 CRUD | - |
 | `ocr_worker.py` | OCR 处理 | db, config |
-| `ui/tray.py` | 系统托盘 | - |
-| `ui/window.py` | WebView 窗口 | - |
 | `web/app.py` | REST API | db |
 
 ## 数据流
@@ -119,6 +115,16 @@ CaptureService → 截图 → 保存文件 → db.add_screenshot() → OCR Worke
 
 配置热更新：
 Web API → config.set_all() → db.set_setting() → 各模块 config.get() 读取
+```
+
+## 启动方式
+
+```bash
+# 启动应用
+python main.py
+
+# 访问 Web UI
+# http://127.0.0.1:5000
 ```
 
 ## 测试架构

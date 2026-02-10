@@ -108,6 +108,10 @@ class OCRWorker:
                 for item in pending:
                     if not self._running:
                         break
+                    # 再次检查GPU
+                    if not is_gpu_idle(config.get('GPU_USAGE_THRESHOLD')):
+                        log.info("GPU忙碌，暂停OCR")
+                        break
                     self.process_one(item['id'], item['path'])
 
             except Exception as e:

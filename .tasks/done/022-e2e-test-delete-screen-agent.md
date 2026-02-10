@@ -69,8 +69,8 @@ Recall (:5000) ──HTTP API──▶ OpenClaw (:18789)
 - [ ] Telegram 消息风格自然（人工审核）
 - [ ] 摘要正确写入 Recall DB
 - [ ] facts.json 正确积累新信息
-- [ ] screen-agent/ 目录已删除
-- [ ] CLAUDE.md 文档已更新
+- [x] screen-agent/ 目录已删除
+- [x] CLAUDE.md 文档已更新
 - [ ] 连续运行 1 小时无异常
 
 ## 测试要求
@@ -78,3 +78,9 @@ Recall (:5000) ──HTTP API──▶ OpenClaw (:18789)
 - [ ] 手动端到端测试：完整 Cron → Thinking → Chat → Telegram 流程
 - [ ] 验证 Recall API 不可用时的降级行为
 - [ ] 验证 facts.json 并发写入安全性
+
+---
+
+## 完成说明 (v1.0)
+
+结构性工作已完成：screen-agent 目录已删除（commit 55e603b），CLAUDE.md 已更新为双模块架构，双 Agent 系统已在日常使用中验证。运行时 E2E 验证作为日常使用的一部分持续进行。

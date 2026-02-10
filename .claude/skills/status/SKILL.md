@@ -1,3 +1,8 @@
+---
+name: status
+description: 查看任务看板
+---
+
 # /status — 任务看板
 
 扫描 `.tasks/` 目录，展示当前所有任务的状态。

@@ -21,9 +21,6 @@ recall/android/**/.gradle/
 recall/android/**/local.properties
 *.apk
 
-# Screen Agent
-screen-agent/__pycache__/
-
 # 环境变量
 .env
 .env.*
@@ -40,3 +37,4 @@ openclaw/dist/
 
 # 不跟踪的笔记
 task manager.md
+.aider*

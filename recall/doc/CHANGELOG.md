@@ -1,5 +1,28 @@
 # Recall 版本历史
 
+## v0.7.0 (2026-02-10)
+
+### 重构
+- **UI 架构简化** - 移除 PyWebView 桌面窗口和系统托盘，统一为纯 Web UI
+  - 删除 `ui/` 目录（tray.py, window.py）
+  - 删除 `run.pyw` 和 `start.vbs` 启动脚本
+  - 从 `requirements.txt` 移除 pywebview、pystray 依赖
+  - 简化 `app.py` 和 `main.py`
+
+### 变更
+- 启动方式统一为 `python main.py`
+- 访问地址: http://127.0.0.1:5000
+- 通过 Ctrl+C 退出程序
+
+### 删除
+- `ui/tray.py` - 系统托盘管理
+- `ui/window.py` - PyWebView 窗口管理
+- `ui/__init__.py`
+- `run.pyw` - 无窗口启动入口
+- `start.vbs` - VBScript 启动脚本
+
+---
+
 ## v0.6.3 (2026-02-01)
 
 ### 修复

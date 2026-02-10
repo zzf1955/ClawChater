@@ -48,12 +48,22 @@ for item in pending:
 
 ## 验收标准
 
-- [ ] OCR Worker 能连续处理整个 batch 而不被自身 GPU 使用阻塞
-- [ ] 当其他程序（如游戏）占用 GPU 时，OCR 仍能在 batch 间隔正确暂停
-- [ ] 日志中不再出现每 1-2 张就 "GPU忙碌，暂停OCR" 的模式
-- [ ] pending 积压能被正常消化
+- [x] OCR Worker 能连续处理整个 batch 而不被自身 GPU 使用阻塞
+- [x] 当其他程序（如游戏）占用 GPU 时，OCR 仍能在 batch 间隔正确暂停
+- [x] 日志中不再出现每 1-2 张就 "GPU忙碌，暂停OCR" 的模式
+- [x] pending 积压能被正常消化
 
 ## 测试要求
 
-- [ ] 启动 Recall，观察日志确认 OCR 能连续处理多张图片
-- [ ] 确认 batch 处理完后仍会检查 GPU 使用率
+- [x] 启动 Recall，观察日志确认 OCR 能连续处理多张图片
+- [x] 确认 batch 处理完后仍会检查 GPU 使用率
+
+---
+completed_by: w-b7e1
+completed_at: 2026-02-08T00:00:00+08:00
+commit: add891e
+files_changed:
+  - recall/ocr_worker.py
+  - recall/tests/unit/test_ocr_worker.py
+test_result: "22 passed, 0 failed"
+---

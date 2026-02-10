@@ -6,6 +6,20 @@
 
 ClawChater 是一个**能看到你在做什么的聊天 bot**。通过持续观察用户屏幕（PC + 手机），理解用户当前活动，然后通过 Telegram 主动和用户聊天。手机端尤其重要——它能捕捉到生活中的细节。
 
+## 行为准则
+
+- **记录调试成果**：如果一个文件位置、指令格式、环境设置经过反复调试才通过，必须记录到本文件「踩坑记录」一节中，避免重复踩坑
+- **先读后改**：修改任何文件前先 Read，理解现有代码再动手
+- **测试先行**：代码修改后先 `pnpm build` 再 `pnpm test`，确认无回归
+
+## 踩坑记录
+
+- **OpenClaw 配置嵌套路径**：配置项路径容易搞错（如 `session.agentToAgent.maxPingPongTurns` vs `tools.agentToAgent`），修改前先 Grep 源码确认实际读取路径
+- **Git Bash JSON 转义**：JSON 中的单引号在 Git Bash 有问题，用 `--data-raw` + 双引号转义
+- **Gateway 进程残留**：修改代码后重启前先 `taskkill //F //PID` 或用 `--force`
+- **`pnpm` 不在 PATH**：需要用 `npx pnpm` 代替
+- **`| head` 在后台模式缓冲**：不要在 `run_in_background` 的 Bash 命令中使用 `| head`
+
 ## 系统架构
 
 两个模块协作，数据单向流动：
@@ -16,14 +30,14 @@ Recall (:5000) ──HTTP API──▶ OpenClaw (:18789)
 (PC + Android)                Chat Agent (Telegram 聊天)
 ```
 
-**当前状态**：Recall + OpenClaw 双模块架构。Thinking Agent 每 5 分钟通过 Cron 拉取 OCR 数据分析，有趣时触发 Chat Agent 在 Telegram 上聊天。
+**当前状态**：Recall + OpenClaw 双模块架构。两个 Session：Thinking Agent（`agent:thinking:main`）通过 Heartbeat 每 5 分钟分析 OCR 数据，有趣时指导 Chat Agent（`agent:chat:main`）在 Telegram 上聊天。用户消息也先经 Thinking Agent 分析再由 Chat Agent 回复。
 
 ## 模块速查
 
 | 模块 | 语言 | 启动命令 | 端口 |
 |------|------|----------|------|
 | recall | Python 3.11 (conda: `recall`) | `python main.py` | 5000 |
-| openclaw | TypeScript (Node ≥22.12) | `pnpm start` | 18789 |
+| openclaw | TypeScript (Node ≥22.12) | `pnpm start gateway` | 18789 |
 
 ## 常用命令
 
@@ -45,8 +59,23 @@ cmd //c "cd /d D:\\BaiduSyncdisk\\Desktop\\ClawChater\\recall\\android\\RecallMo
 
 ### OpenClaw
 ```bash
+# 启动 Gateway（自动构建 + 前台运行）
+pnpm start gateway                           # 标准启动
+pnpm start gateway --force                   # 先杀占用端口的进程再启动
+pnpm start gateway --verbose                 # 详细日志
+pnpm gateway:dev                             # Dev 模式（跳过 Telegram 等 channels）
+
+# 停止 Gateway
+# 前台运行时直接 Ctrl+C；后台残留用：
+taskkill //F //PID <pid>                     # PID 在启动日志中显示
+# 或按端口查 PID：netstat -ano | grep 18789
+
+# 状态检查
+node openclaw.mjs gateway status             # 完整状态
+node openclaw.mjs gateway health             # 快速健康检查
+
+# 开发
 pnpm install && pnpm build                   # 安装 + 构建
-pnpm dev                                     # 开发模式
 pnpm test                                    # vitest 并行测试
 pnpm check                                   # 类型检查 + oxlint + oxfmt
 ```
@@ -68,13 +97,38 @@ pnpm check                                   # 类型检查 + oxlint + oxfmt
 ### OpenClaw — 智能分析 + 消息投递层
 分层架构：CLI（Commander.js）→ Gateway（WebSocket/HTTP）→ Agent → Channels（渠道插件）。
 
-**双 Agent 架构**：
-- **Thinking Agent**（Haiku）：后台观察者，每 5 分钟被 Cron 唤醒，从 Recall API 拉取 OCR 数据分析用户活动，有趣时写入 intent 触发 Chat Agent
-- **Chat Agent**（Sonnet）：用户面对面的聊天伙伴，读取 intent 后以朋友口吻在 Telegram 上发起聊天，从用户回复中提取 facts
+**双 Agent 架构（2 Session）**：
+- **Thinking Agent**（`agent:thinking:main`）：后台观察者，通过 Heartbeat 每 5 分钟从 Recall API 拉取 OCR 数据分析用户活动；用户发消息时也先经此 Agent 分析。有趣时通过 `sessions_send`（`deliver: true`）向 Chat Agent 发送指导消息
+- **Chat Agent**（`agent:chat:main`）：用户面对面的聊天伙伴，收到指导消息后以朋友口吻回复，回复自动投递到 Telegram
 
-**共享数据**：`~/.openclaw/workspace/` 下的 `intents.json`（Thinking→Chat）和 `facts.json`（Chat→Thinking）
+**Agent 间通信**：Thinking→Chat 通过 `sessions_send` 工具（`deliver: true, channel: "telegram"`）；共享长期记忆通过 `~/.openclaw/workspace/facts.json`
 
 当前渠道：**Telegram**（@zzf1955_bot）。
+
+### OpenClaw Session 数据存储
+
+**目录结构**：
+```
+~/.openclaw/agents/
+├── thinking/sessions/          # Thinking Agent 会话
+│   ├── sessions.json           # Session 元数据（key→ID 映射）
+│   └── {uuid}.jsonl            # 对话记录（JSON Lines）
+├── chat/sessions/              # Chat Agent 会话
+│   ├── sessions.json
+│   ├── session-routing.json    # 活跃路由
+│   └── {uuid}.jsonl
+└── main/sessions/              # 默认 Agent（hook 触发等）
+    ├── sessions.json
+    └── {uuid}.jsonl
+```
+
+**路径解析**：Session Key `agent:{agentId}:{suffix}` → 查 `sessions.json` 得 UUID → `~/.openclaw/agents/{agentId}/sessions/{uuid}.jsonl`
+
+**关键源码**：
+- `openclaw/src/config/sessions/paths.ts` — 路径解析（`resolveAgentSessionsDir`, `resolveSessionTranscriptPath`）
+- `openclaw/src/config/sessions/store.ts` — Session store 读写（带文件锁）
+- `openclaw/src/config/sessions/transcript.ts` — Transcript 文件操作
+- `openclaw/src/routing/session-key.ts` — Session key 解析
 
 OpenClaw 开发规范见 `openclaw/AGENTS.md`：
 - 严格 TypeScript（ESM），import 必须带 `.js` 后缀
