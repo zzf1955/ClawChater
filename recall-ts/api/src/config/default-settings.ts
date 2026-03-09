@@ -1,0 +1,18 @@
+import { JsonValue } from '../types/json.js';
+
+export const DEFAULT_SETTINGS: Record<string, JsonValue> = {
+  DB_PATH: './data/recall.db',
+  SCREENSHOT_DIR: './screenshots',
+  CHANGE_THRESHOLD: 0.8,
+  FORCE_CAPTURE_INTERVAL: 300,
+  MIN_CAPTURE_INTERVAL: 10,
+  JPEG_QUALITY: 85,
+  CPU_USAGE_THRESHOLD: 75,
+  GPU_USAGE_THRESHOLD: 30,
+  RESOURCE_MONITOR_INTERVAL: 5,
+  OCR_BATCH_SIZE: 10,
+  OCR_POLL_INTERVAL: 5,
+  OCR_PIPELINE_MODULE: null,
+  SIMILARITY_THRESHOLD: 0.9,
+  GROUP_TIME_WINDOW: 3600
+};
