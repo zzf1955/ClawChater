@@ -306,14 +306,150 @@ def api_post_summary():
 
 @app.route('/api/summaries', methods=['GET'])
 def api_get_summaries():
-    """查询最近 N 小时的摘要
+    """查询摘要
 
     Query Parameters:
-        hours: int, 往前查询多少小时 (默认 24)
+        start_time: ISO8601 时间戳，起始时间（可选）
+        end_time: ISO8601 时间戳，结束时间（可选）
+        hours: int, 往前查询多少小时（默认 24，与 start_time/end_time 互斥）
+
+    返回格式：
+        方式1 - 使用 start_time 和 end_time：返回起点终点均位于该范围内的总结
+        方式2 - 使用 hours：返回最近 N 小时的总结
     """
-    hours = request.args.get('hours', 24, type=int)
-    summaries = db.get_summaries(hours)
-    return jsonify(summaries)
+    start_time = request.args.get('start_time')
+    end_time = request.args.get('end_time')
+
+    if start_time and end_time:
+        # 方式1：按时间范围查询
+        summaries = db.get_summaries_by_time_range(start_time, end_time)
+    else:
+        # 方式2：按小时查询
+        hours = request.args.get('hours', 24, type=int)
+        summaries = db.get_summaries(hours)
+
+    return jsonify({
+        'summaries': summaries,
+        'count': len(summaries)
+    })
+
+
+@app.route('/api/summaries/list', methods=['GET'])
+def api_list_summaries():
+    """列出时段内总结的起止时间（不含具体内容）
+
+    Query Parameters:
+        start_time: ISO8601 时间戳，起始时间
+        end_time: ISO8601 时间戳，结束时间
+
+    返回格式：
+        { "summaries": [{ "id": 1, "start_time": "...", "end_time": "..." }], "count": 1 }
+    """
+    start_time = request.args.get('start_time')
+    end_time = request.args.get('end_time')
+
+    if not start_time or not end_time:
+        return jsonify({'error': '需要提供 start_time 和 end_time 参数'}), 400
+
+    summaries = db.get_summary_list_by_time_range(start_time, end_time)
+    return jsonify({
+        'summaries': summaries,
+        'count': len(summaries)
+    })
+
+
+@app.route('/api/summaries/<int:summary_id>', methods=['GET'])
+def api_get_summary_by_id(summary_id):
+    """按 ID 获取单条总结
+
+    返回格式：
+        { "id": 1, "start_time": "...", "end_time": "...", "summary": "...", ... }
+    """
+    summary = db.get_summary_by_id(summary_id)
+    if summary:
+        return jsonify(summary)
+    return jsonify({'error': 'Not found'}), 404
+
+
+# ============ OCR API ============
+
+@app.route('/api/ocr', methods=['GET'])
+def api_get_ocr():
+    """获取 OCR 文本数据
+
+    Query Parameters:
+        start_time: ISO8601 时间戳，起始时间
+        end_time: ISO8601 时间戳，结束时间
+        limit: int, 最多返回条数（默认 100）
+
+    返回格式：
+        { "data": [{ "id": 1, "timestamp": "...", "window_title": "...",
+                    "process_name": "...", "ocr_text": "..." }], "count": 1 }
+    """
+    start_time = request.args.get('start_time')
+    end_time = request.args.get('end_time')
+    limit = request.args.get('limit', 100, type=int)
+
+    if not start_time or not end_time:
+        return jsonify({'error': '需要提供 start_time 和 end_time 参数'}), 400
+
+    data = db.get_ocr_by_time_range(start_time, end_time, limit)
+    return jsonify({
+        'data': data,
+        'count': len(data),
+        'server_time': datetime.now().isoformat()
+    })
+
+
+# ============ Screenshot by Timestamp API ============
+
+@app.route('/api/screenshots/by-timestamp/<timestamp>', methods=['GET'])
+def api_screenshot_by_timestamp(timestamp):
+    """按时间戳获取截图
+
+    Path Parameters:
+        timestamp: ISO8601 时间戳或 Unix 时间戳
+
+    Query Parameters:
+        format: 'file' (默认) 或 'base64'
+
+    返回：最接近该时间戳的截图图片
+    """
+    fmt = request.args.get('format', 'file')
+
+    # 尝试解析时间戳
+    try:
+        # 尝试解析 Unix 时间戳
+        if timestamp.isdigit():
+            ts = datetime.fromtimestamp(int(timestamp)).isoformat()
+        else:
+            ts = timestamp
+
+        row = db.get_screenshot_by_timestamp(ts)
+        if not row:
+            return jsonify({'error': 'No screenshot found'}), 404
+
+        file_path = Path(row['path'])
+        if not file_path.is_absolute():
+            file_path = SCREENSHOT_DIR / file_path
+
+        if not file_path.exists():
+            return jsonify({'error': 'File not found'}), 404
+
+        if fmt == 'base64':
+            with open(file_path, 'rb') as f:
+                encoded = base64.b64encode(f.read()).decode('utf-8')
+            return jsonify({
+                'id': row['id'],
+                'timestamp': row['timestamp'],
+                'image_base64': encoded,
+                'content_type': 'image/jpeg'
+            })
+
+        return send_file(file_path, mimetype='image/jpeg')
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
 
 
 if __name__ == '__main__':

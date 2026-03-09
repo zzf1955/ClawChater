@@ -265,6 +265,77 @@ class Database:
             """).fetchone()
             return dict(row) if row else None
 
+    def get_summary_by_id(self, summary_id: int) -> Optional[Dict[str, Any]]:
+        """按 ID 获取单条总结"""
+        with self.get_connection() as conn:
+            row = conn.execute("""
+                SELECT id, start_time, end_time, summary, activity_type, created_at
+                FROM summaries
+                WHERE id = ?
+            """, (summary_id,)).fetchone()
+            return dict(row) if row else None
+
+    def get_summaries_by_time_range(self, start_time: str, end_time: str) -> List[Dict[str, Any]]:
+        """获取指定时间范围内的总结（起点终点均位于该范围内）"""
+        with self.get_connection() as conn:
+            rows = conn.execute("""
+                SELECT id, start_time, end_time, summary, activity_type, created_at
+                FROM summaries
+                WHERE start_time >= ? AND end_time <= ?
+                ORDER BY start_time DESC
+            """, (start_time, end_time)).fetchall()
+            return [dict(row) for row in rows]
+
+    def get_summary_list_by_time_range(self, start_time: str, end_time: str) -> List[Dict[str, Any]]:
+        """获取指定时间范围内的总结列表（不含内容，只返回 id 和时间范围）"""
+        with self.get_connection() as conn:
+            rows = conn.execute("""
+                SELECT id, start_time, end_time
+                FROM summaries
+                WHERE start_time >= ? AND end_time <= ?
+                ORDER BY start_time DESC
+            """, (start_time, end_time)).fetchall()
+            return [dict(row) for row in rows]
+
+    # ============ OCR 相关方法 ============
+
+    def get_ocr_by_time_range(self, start_time: str, end_time: str,
+                               limit: int = 100) -> List[Dict[str, Any]]:
+        """获取指定时间范围内的 OCR 数据（时间戳、窗口、OCR 内容）"""
+        with self.get_connection() as conn:
+            rows = conn.execute("""
+                SELECT id, timestamp, window_title, process_name, ocr_text
+                FROM screenshots
+                WHERE timestamp >= ? AND timestamp <= ?
+                  AND ocr_status = 'done' AND ocr_text IS NOT NULL
+                ORDER BY timestamp ASC
+                LIMIT ?
+            """, (start_time, end_time, limit)).fetchall()
+            return [dict(row) for row in rows]
+
+    def get_screenshot_by_timestamp(self, timestamp: str) -> Optional[Dict[str, Any]]:
+        """按时间戳获取最接近的截图"""
+        with self.get_connection() as conn:
+            # 先尝试精确匹配
+            row = conn.execute("""
+                SELECT id, path, timestamp, window_title, process_name
+                FROM screenshots
+                WHERE timestamp = ?
+                LIMIT 1
+            """, (timestamp,)).fetchone()
+
+            if row:
+                return dict(row)
+
+            # 如果没有精确匹配，找最接近的
+            row = conn.execute("""
+                SELECT id, path, timestamp, window_title, process_name
+                FROM screenshots
+                ORDER BY ABS(julianday(timestamp) - julianday(?))
+                LIMIT 1
+            """, (timestamp,)).fetchone()
+            return dict(row) if row else None
+
 
 # ============ 向后兼容层 ============
 # 以下函数使用默认数据库实例，保持与旧代码的兼容性
@@ -381,3 +452,28 @@ def get_summaries(hours: int = 24) -> List[Dict[str, Any]]:
 def get_latest_summary() -> Optional[Dict[str, Any]]:
     """获取最新一条摘要（向后兼容）"""
     return _get_db().get_latest_summary()
+
+
+def get_summary_by_id(summary_id: int) -> Optional[Dict[str, Any]]:
+    """按 ID 获取单条总结（向后兼容）"""
+    return _get_db().get_summary_by_id(summary_id)
+
+
+def get_summaries_by_time_range(start_time: str, end_time: str) -> List[Dict[str, Any]]:
+    """获取指定时间范围内的总结（向后兼容）"""
+    return _get_db().get_summaries_by_time_range(start_time, end_time)
+
+
+def get_summary_list_by_time_range(start_time: str, end_time: str) -> List[Dict[str, Any]]:
+    """获取指定时间范围内的总结列表（不含内容）（向后兼容）"""
+    return _get_db().get_summary_list_by_time_range(start_time, end_time)
+
+
+def get_ocr_by_time_range(start_time: str, end_time: str, limit: int = 100) -> List[Dict[str, Any]]:
+    """获取指定时间范围内的 OCR 数据（向后兼容）"""
+    return _get_db().get_ocr_by_time_range(start_time, end_time, limit)
+
+
+def get_screenshot_by_timestamp(timestamp: str) -> Optional[Dict[str, Any]]:
+    """按时间戳获取最接近的截图（向后兼容）"""
+    return _get_db().get_screenshot_by_timestamp(timestamp)
