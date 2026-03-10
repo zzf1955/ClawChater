@@ -1,21 +1,155 @@
 from __future__ import annotations
 
 import asyncio
+import logging
+import os
+import subprocess
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Callable
 
+from recall.db.setting import get_setting
 from recall.services.core.events import ResourceAvailableEvent
 
 
+@dataclass(slots=True)
+class ResourceSnapshot:
+    cpu_usage: float
+    gpu_usage: float
+    cpu_threshold: float
+    gpu_threshold: float
+
+
+UsageSampler = Callable[[], float]
+
+
+def _parse_threshold(raw_value: str | None, default_value: float) -> float:
+    if raw_value is None:
+        return default_value
+    try:
+        return float(raw_value)
+    except ValueError:
+        return default_value
+
+
+def _sample_cpu_usage() -> float:
+    cpu_count = os.cpu_count() or 1
+    try:
+        one_minute_load = os.getloadavg()[0]
+    except OSError:
+        return 0.0
+    usage = (one_minute_load / cpu_count) * 100
+    return max(0.0, min(100.0, usage))
+
+
+def _sample_gpu_usage() -> float:
+    try:
+        output = subprocess.check_output(
+            [
+                "nvidia-smi",
+                "--query-gpu=utilization.gpu",
+                "--format=csv,noheader,nounits",
+            ],
+            text=True,
+            stderr=subprocess.DEVNULL,
+            timeout=1.0,
+        )
+    except (FileNotFoundError, subprocess.CalledProcessError, subprocess.TimeoutExpired):
+        return 0.0
+
+    values: list[float] = []
+    for line in output.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            values.append(float(line))
+        except ValueError:
+            continue
+    if not values:
+        return 0.0
+    return max(values)
+
+
 class ResourceMonitor:
-    def __init__(self, event_bus, interval_seconds: float = 5.0) -> None:
+    def __init__(
+        self,
+        event_bus,
+        interval_seconds: float = 5.0,
+        *,
+        db_path: Path | None = None,
+        cpu_threshold: float = 80.0,
+        gpu_threshold: float = 70.0,
+        cpu_usage_sampler: UsageSampler = _sample_cpu_usage,
+        gpu_usage_sampler: UsageSampler = _sample_gpu_usage,
+    ) -> None:
         self._event_bus = event_bus
         self._interval_seconds = interval_seconds
+        self._db_path = db_path
+        self._cpu_threshold = cpu_threshold
+        self._gpu_threshold = gpu_threshold
+        self._cpu_usage_sampler = cpu_usage_sampler
+        self._gpu_usage_sampler = gpu_usage_sampler
+        self._logger = logging.getLogger(__name__)
         self._running = False
 
     async def run(self) -> None:
         self._running = True
         while self._running:
             await asyncio.sleep(self._interval_seconds)
-            await self._event_bus.publish(ResourceAvailableEvent())
+            await self.check_and_publish_once()
+
+    async def check_and_publish_once(self) -> bool:
+        snapshot = await asyncio.to_thread(self.sample_once)
+        if not self._is_resource_available(snapshot):
+            return False
+
+        await self._event_bus.publish(
+            ResourceAvailableEvent(
+                payload={
+                    "cpu_usage": round(snapshot.cpu_usage, 2),
+                    "gpu_usage": round(snapshot.gpu_usage, 2),
+                    "cpu_threshold": snapshot.cpu_threshold,
+                    "gpu_threshold": snapshot.gpu_threshold,
+                }
+            )
+        )
+        return True
+
+    def sample_once(self) -> ResourceSnapshot:
+        cpu_threshold = self._read_threshold("CPU_USAGE_THRESHOLD", self._cpu_threshold)
+        gpu_threshold = self._read_threshold("GPU_USAGE_THRESHOLD", self._gpu_threshold)
+        cpu_usage = self._cpu_usage_sampler()
+        gpu_usage = self._gpu_usage_sampler()
+        return ResourceSnapshot(
+            cpu_usage=cpu_usage,
+            gpu_usage=gpu_usage,
+            cpu_threshold=cpu_threshold,
+            gpu_threshold=gpu_threshold,
+        )
+
+    def _read_threshold(self, key: str, default_value: float) -> float:
+        try:
+            raw_value = get_setting(key, db_path=self._db_path)
+        except Exception:
+            self._logger.debug("read threshold failed for %s, use default %.2f", key, default_value)
+            return default_value
+        return _parse_threshold(raw_value, default_value)
+
+    def _is_resource_available(self, snapshot: ResourceSnapshot) -> bool:
+        is_available = (
+            snapshot.cpu_usage <= snapshot.cpu_threshold
+            and snapshot.gpu_usage <= snapshot.gpu_threshold
+        )
+        self._logger.debug(
+            "resource sample cpu=%.2f gpu=%.2f thresholds cpu=%.2f gpu=%.2f available=%s",
+            snapshot.cpu_usage,
+            snapshot.gpu_usage,
+            snapshot.cpu_threshold,
+            snapshot.gpu_threshold,
+            is_available,
+        )
+        return is_available
 
     def stop(self) -> None:
         self._running = False
