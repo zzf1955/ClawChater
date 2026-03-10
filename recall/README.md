@@ -28,6 +28,31 @@ npm install
 npm run dev
 ```
 
+## 一体化启动（FastAPI 托管前端）
+
+```bash
+cd /Users/zzf/share/ClawChater/recall/frontend
+npm install
+npm run build
+
+cd /Users/zzf/share/ClawChater
+uvicorn recall.app:app --host 127.0.0.1 --port 8000
+```
+
+- 浏览器访问：`http://127.0.0.1:8000/screenshots`
+- API 仍通过同一服务访问：`http://127.0.0.1:8000/api/config`
+- SPA fallback 已启用：直接访问 `/screenshots`、`/config`、`/summaries` 不会 404
+
+### 前端 API 地址策略
+
+- 生产/一体化模式默认同源访问：前端请求 `/api/**`，无需额外配置。
+- 如需指向其他后端地址，可在前端构建前设置 `VITE_API_BASE_URL`，例如：
+
+```bash
+cd /Users/zzf/share/ClawChater/recall/frontend
+VITE_API_BASE_URL=http://127.0.0.1:9000 npm run build
+```
+
 ## 最小自检
 
 ```bash

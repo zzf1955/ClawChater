@@ -188,3 +188,35 @@ def test_lifespan_hooks_and_idempotency(tmp_path: Path, monkeypatch) -> None:
         assert engines[1].stop_calls == 0
 
     assert engines[1].stop_calls == 1
+
+
+def test_frontend_static_and_spa_fallback(tmp_path: Path, monkeypatch) -> None:
+    _prepare_paths(tmp_path, monkeypatch)
+
+    frontend_dist = tmp_path / "frontend-dist"
+    assets_dir = frontend_dist / "assets"
+    assets_dir.mkdir(parents=True, exist_ok=True)
+    (frontend_dist / "index.html").write_text("<html><body><div id='root'>frontend</div></body></html>", encoding="utf-8")
+    (assets_dir / "main.js").write_text("console.log('ok');", encoding="utf-8")
+
+    app = create_app(engine_factory=FakeEngine, frontend_dist_dir=frontend_dist)
+    with TestClient(app) as client:
+        root_response = client.get("/")
+        assert root_response.status_code == 200
+        assert "frontend" in root_response.text
+
+        fallback_response = client.get("/screenshots")
+        assert fallback_response.status_code == 200
+        assert "frontend" in fallback_response.text
+
+        asset_response = client.get("/assets/main.js")
+        assert asset_response.status_code == 200
+        assert "console.log('ok');" in asset_response.text
+
+        api_response = client.get("/api/config")
+        assert api_response.status_code == 200
+        assert api_response.json()["OCR_BATCH_SIZE"] == "10"
+
+        health_response = client.get("/health")
+        assert health_response.status_code == 200
+        assert health_response.json()["status"] == "ok"
