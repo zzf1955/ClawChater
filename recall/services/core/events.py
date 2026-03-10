@@ -1,22 +1,35 @@
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
+from typing import Literal, TypeAlias
 
 
-@dataclass
+EventName: TypeAlias = Literal["screen_change", "force_capture", "resource_available"]
+
+
+def _utc_now_iso() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
+
+@dataclass(slots=True)
 class BaseEvent:
-    happened_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    name: EventName
+    happened_at: str = field(default_factory=_utc_now_iso)
+    payload: dict[str, str | int | float | bool | None] = field(default_factory=dict)
 
 
-@dataclass
+@dataclass(slots=True)
 class ScreenChangeEvent(BaseEvent):
-    pass
+    name: EventName = field(default="screen_change", init=False)
 
 
-@dataclass
+@dataclass(slots=True)
 class ForceCaptureEvent(BaseEvent):
-    pass
+    name: EventName = field(default="force_capture", init=False)
 
 
-@dataclass
+@dataclass(slots=True)
 class ResourceAvailableEvent(BaseEvent):
-    pass
+    name: EventName = field(default="resource_available", init=False)
+
+
+Event: TypeAlias = ScreenChangeEvent | ForceCaptureEvent | ResourceAvailableEvent
