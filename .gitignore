@@ -38,3 +38,6 @@ openclaw/dist/
 # 不跟踪的笔记
 task manager.md
 .aider*
+
+# Git worktree 目录
+.worktrees/
