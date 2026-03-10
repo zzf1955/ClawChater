@@ -20,7 +20,7 @@
 - doc/env.md: 开发环境
 - doc/framework.md: 项目整体架构
 - doc/notice.md: 项目踩坑记录
-- tasks/: agent 任务规划
+- doc/tasks/: agent 任务规划
 - .agents/skills: skill 存放位置
 
 ## Git Worktree 规范

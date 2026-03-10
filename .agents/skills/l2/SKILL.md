@@ -17,8 +17,10 @@ description: 任务认领、实现、测试、审查、合并收口
 
 ## 认领任务
 
+**此步骤在 main 分支执行，保证并行 agent 能看到**
+
 1. 扫描 `tasks/pending/`，按最小 ID 优先认领。
-2. 将任务文件移动到 `tasks/active/` 下。此处使用文件移动，避免多个 agent 认领到相同任务。
+2. 在 main 分支中，将任务文件移动到 `tasks/active/` 下。此处在 main 中使用文件移动，避免多个 agent 认领到相同任务。
 3. 更新 front matter：
    - `status: "active"`
    - `branch: "codex/tNNN-<slug>"`
@@ -40,6 +42,8 @@ cd "$REPO_ROOT/.worktrees/$TREE_NAME"
 ```
 
 ## 开发
+
+**此步骤在 新创建的 worktree 执行**
 
 1. 按任务中的“实施计划（分步骤）”执行开发。
 2. 按“测试要求”执行测试，修 bug。
