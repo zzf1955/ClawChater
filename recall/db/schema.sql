@@ -3,7 +3,7 @@ CREATE TABLE IF NOT EXISTS screenshots (
   captured_at TEXT NOT NULL,
   file_path TEXT NOT NULL,
   ocr_text TEXT,
-  ocr_status TEXT NOT NULL DEFAULT 'pending',
+  ocr_status TEXT NOT NULL DEFAULT 'pending' CHECK (ocr_status IN ('pending', 'done', 'error')),
   window_title TEXT,
   process_name TEXT,
   phash TEXT
