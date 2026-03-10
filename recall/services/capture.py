@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 import hashlib
+import platform
+import subprocess
+import tempfile
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -36,7 +39,26 @@ class CaptureService:
 
     @staticmethod
     def _default_screenshot_provider() -> bytes:
-        return b"RECALL_FAKE_JPEG"
+        if platform.system() != "Darwin":
+            return b"RECALL_FAKE_JPEG"
+
+        with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as temp_file:
+            temp_path = Path(temp_file.name)
+
+        try:
+            subprocess.run(
+                ["screencapture", "-x", "-t", "jpg", str(temp_path)],
+                check=True,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+            payload = temp_path.read_bytes()
+        except Exception:
+            payload = b"RECALL_FAKE_JPEG"
+        finally:
+            temp_path.unlink(missing_ok=True)
+
+        return payload
 
     @staticmethod
     def _default_file_writer(path: Path, payload: bytes) -> None:
@@ -46,6 +68,15 @@ class CaptureService:
     @staticmethod
     def _build_phash(payload: bytes) -> str:
         return hashlib.sha256(payload).hexdigest()[:16]
+
+    def current_screen_hash(self) -> str | None:
+        try:
+            payload = self._screenshot_provider()
+        except Exception:
+            return None
+        if not payload:
+            return None
+        return self._build_phash(payload)
 
     def capture(self, trigger: str, window_title: str | None = None, process_name: str | None = None) -> CaptureResult:
         captured_at_dt = datetime.now(timezone.utc)

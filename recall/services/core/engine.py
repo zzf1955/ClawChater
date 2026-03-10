@@ -37,7 +37,10 @@ class Engine:
         self.capture_service = capture_service or CaptureService()
         self._capture_handler = capture_handler
 
-        self.screen_monitor = screen_monitor or ScreenMonitor(self.event_bus)
+        self.screen_monitor = screen_monitor or ScreenMonitor(
+            self.event_bus,
+            hash_provider=self.capture_service.current_screen_hash,
+        )
         self.time_monitor = time_monitor or TimeMonitor(self.event_bus)
         self.resource_monitor = resource_monitor or ResourceMonitor(self.event_bus)
         self._monitors = [self.screen_monitor, self.time_monitor, self.resource_monitor]
