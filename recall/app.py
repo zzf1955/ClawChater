@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
+from typing import Callable
 
 import uvicorn
 from fastapi import FastAPI
@@ -11,18 +12,24 @@ from recall.db.database import init_db
 from recall.services.core.engine import Engine
 
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    ensure_data_dirs()
-    init_db()
-    engine = Engine()
-    app.state.engine = engine
-    await engine.start()
-    yield
-    await engine.stop()
+def create_app(
+    *,
+    ensure_data_dirs_fn: Callable[[], None] = ensure_data_dirs,
+    init_db_fn: Callable[[], None] = init_db,
+    engine_factory: Callable[[], Engine] = Engine,
+) -> FastAPI:
+    @asynccontextmanager
+    async def lifespan(app: FastAPI):
+        ensure_data_dirs_fn()
+        init_db_fn()
+        engine = engine_factory()
+        app.state.engine = engine
+        await engine.start()
+        try:
+            yield
+        finally:
+            await engine.stop()
 
-
-def create_app() -> FastAPI:
     app = FastAPI(title="Recall API", lifespan=lifespan)
     app.include_router(router)
 
