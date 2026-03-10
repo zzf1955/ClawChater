@@ -36,3 +36,14 @@ pytest recall/tests/test_config.py
 python -m compileall recall
 cd recall/frontend && npm run build
 ```
+
+## 回归测试基线
+
+```bash
+cd /Users/zzf/share/ClawChater
+./scripts/run_regression.sh
+```
+
+- 后端集成链路：`pytest recall/tests/test_regression_pipeline.py recall/tests/test_api.py`
+- 前端 smoke：`cd recall/frontend && npm run test:unit && npm run test:e2e`
+- 详细说明：`doc/testing-baseline.md`

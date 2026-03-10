@@ -1,0 +1,40 @@
+name: regression
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install backend dependencies
+        run: python -m pip install -r recall/requirements.txt
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: recall/frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        run: npm ci
+        working-directory: recall/frontend
+
+      - name: Install Playwright browser
+        run: npx playwright install chromium --with-deps
+        working-directory: recall/frontend
+
+      - name: Run regression baseline
+        run: ./scripts/run_regression.sh
