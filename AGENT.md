@@ -23,11 +23,40 @@
 - tasks/: agent 任务规划
 - .agents/skills: skill 存放位置
 
-## Git Worktree 规则
+## Git Worktree 规范
 
-- worktree dir: ./.worktrees
-- 并行开发使用 `git worktree`。
-- 每个活跃任务绑定一个分支和一个 worktree 路径，禁止多个任务复用同一工作目录。
-- 主分支仅用于任务创建、状态同步、合并，不直接进行并行任务实现。
 - 提交的时候使用 git merge --no-ff 这样我能清晰的看到提交记录，不要使用快进
 - 使用 zzf621 为名字进行提交
+
+- 开发前：创建新的分支
+```bash
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+TREE_NAME="<tree_name>"
+BRANCH_NAME="<branch_name>"
+
+git -C "$REPO_ROOT" switch main
+git -C "$REPO_ROOT" branch "$BRANCH_NAME" main
+mkdir -p "$REPO_ROOT/.worktrees"
+git -C "$REPO_ROOT" worktree add "$REPO_ROOT/.worktrees/$TREE_NAME" "$BRANCH_NAME"
+cd "$REPO_ROOT/.worktrees/$TREE_NAME"
+```
+
+- 开发中提交
+```bash
+git add -A
+git commit -m "xxxx"
+```
+
+- 开发后：merge+清理
+```bash
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+TREE_NAME="<tree_name>"
+BRANCH_NAME="<branch_name>"
+
+git -C "$REPO_ROOT" switch main
+git -C "$REPO_ROOT" merge --no-ff "$BRANCH_NAME"
+
+git -C "$REPO_ROOT" worktree remove "$REPO_ROOT/.worktrees/$TREE_NAME"
+git -C "$REPO_ROOT" worktree prune
+git -C "$REPO_ROOT" branch -d "$BRANCH_NAME"
+```

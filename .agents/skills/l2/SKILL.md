@@ -16,28 +16,37 @@ description: 任务认领、实现、测试、审查、合并收口
 ## 认领任务
 
 1. 扫描 `tasks/pending/`，按最小 ID 优先认领。
-2. 将任务迁移到 `tasks/active/NNN.md`。
+2. 将任务文件移动到 `tasks/active/` 下。此处使用文件移动，避免多个 agent 认领到相同任务。
 3. 更新 front matter：
    - `status: "active"`
    - `branch: "codex/tNNN-<slug>"`
    - `worktree: ".worktrees/tNNN"`
    - `updated_at: <当前时间>`
-4. 创建工作区：
-
+4. 创建工作区
 ```bash
-git worktree add .worktrees/tNNN -b codex/tNNN-<slug>
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+TREE_NAME="<tree_name>"
+BRANCH_NAME="<branch_name>"
+
+git -C "$REPO_ROOT" switch main
+git -C "$REPO_ROOT" branch "$BRANCH_NAME" main
+mkdir -p "$REPO_ROOT/.worktrees"
+git -C "$REPO_ROOT" worktree add "$REPO_ROOT/.worktrees/$TREE_NAME" "$BRANCH_NAME"
+cd "$REPO_ROOT/.worktrees/$TREE_NAME"
 ```
 
 ## 开发
 
 1. 按任务中的“实施计划（分步骤）”执行开发。
 2. 按“测试要求”执行测试，修 bug。
+3. 所有任务开发结束进入验证流程
 
 ## 验证
 
 1. review 本次任务写的代码
 2. 如有 bug 则进行修复
-3. 将可能的风险点+实现的结果（架构变化，新增数据流）报告用户，等待用户确认
+3. 将实现的结果（架构变化，新增数据流，新增文件）报告用户，等待用户确认。
+4. 如果用户确认，则进入收尾流程。
 
 ## 收尾
 
@@ -46,6 +55,19 @@ git worktree add .worktrees/tNNN -b codex/tNNN-<slug>
    - `status: "done"`
    - `updated_at: <当前时间>`
 3. 在文末追加交付记录（提交、测试结果、变更文件摘要）。
+4. merge + 清理：
+```bash
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+TREE_NAME="<tree_name>"
+BRANCH_NAME="<branch_name>"
+
+git -C "$REPO_ROOT" switch main
+git -C "$REPO_ROOT" merge --no-ff "$BRANCH_NAME"
+
+git -C "$REPO_ROOT" worktree remove "$REPO_ROOT/.worktrees/$TREE_NAME"
+git -C "$REPO_ROOT" worktree prune
+git -C "$REPO_ROOT" branch -d "$BRANCH_NAME"
+```
 
 ## 阻塞流程
 
@@ -56,3 +78,4 @@ git worktree add .worktrees/tNNN -b codex/tNNN-<slug>
 3. 在正文新增阻塞信息：
    - `## blocked_reason`
    - `## unblock_condition`
+4. 报告用户
