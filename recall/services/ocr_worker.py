@@ -3,6 +3,7 @@ from __future__ import annotations
 import inspect
 import logging
 from pathlib import Path
+import subprocess
 from typing import Awaitable, Callable
 
 from recall import config
@@ -14,8 +15,23 @@ OCRCallable = Callable[[Path], str | None | Awaitable[str | None]]
 
 
 def _default_ocr_engine(image_path: Path) -> str:
-    image_path.read_bytes()
-    return ""
+    normalized_path = image_path.resolve()
+    try:
+        completed = subprocess.run(
+            ["tesseract", str(normalized_path), "stdout"],
+            check=True,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+        )
+    except FileNotFoundError as exc:
+        raise RuntimeError("tesseract command not found") from exc
+    except subprocess.CalledProcessError as exc:
+        message = (exc.stderr or exc.stdout or "").strip()
+        raise RuntimeError(f"tesseract failed: {message or exc.returncode}") from exc
+
+    return completed.stdout.replace("\x0c", "").strip()
 
 
 class OCRWorker:
