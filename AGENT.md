@@ -25,7 +25,9 @@
 
 ## Git Worktree 规则
 
+- worktree dir: ./.worktrees
 - 并行开发使用 `git worktree`。
 - 每个活跃任务绑定一个分支和一个 worktree 路径，禁止多个任务复用同一工作目录。
 - 主分支仅用于任务创建、状态同步、合并，不直接进行并行任务实现。
+- 提交的时候使用 git merge --no-ff 这样我能清晰的看到提交记录，不要使用快进
 - 使用 zzf621 为名字进行提交
