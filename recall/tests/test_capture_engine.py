@@ -3,9 +3,11 @@ from __future__ import annotations
 import asyncio
 import platform
 import sqlite3
+from io import BytesIO
 from pathlib import Path
 
 import pytest
+from PIL import Image
 
 from recall.db import database, screenshot
 from recall.services.capture import CaptureService
@@ -127,3 +129,22 @@ def test_engine_force_capture_writes_file_and_db_record(tmp_path: Path, monkeypa
     assert row["file_path"].startswith("screenshots/")
     assert (tmp_path / row["file_path"]).exists()
     assert engine.time_monitor.reset_calls == 1
+
+
+def _build_png_bytes(color: tuple[int, int, int]) -> bytes:
+    image = Image.new("RGB", (16, 16), color)
+    buf = BytesIO()
+    image.save(buf, format="PNG")
+    return buf.getvalue()
+
+
+def test_capture_builds_perceptual_hash_for_image_payload() -> None:
+    payload_a = _build_png_bytes((0, 0, 0))
+    payload_b = _build_png_bytes((255, 255, 255))
+
+    hash_a = CaptureService._build_phash(payload_a)
+    hash_b = CaptureService._build_phash(payload_b)
+
+    assert len(hash_a) == 16
+    assert len(hash_b) == 16
+    assert hash_a == hash_b

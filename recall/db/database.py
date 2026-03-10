@@ -8,6 +8,7 @@ from typing import Iterator
 from recall import config
 
 DEFAULT_SETTINGS: tuple[tuple[str, str], ...] = (
+    ("SCREEN_CHECK_INTERVAL", "3"),
     ("CHANGE_THRESHOLD", "5"),
     ("OCR_BATCH_SIZE", "10"),
     ("GPU_USAGE_THRESHOLD", "70"),

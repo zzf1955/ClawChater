@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 from typing import Literal, TypeAlias
 
 
-EventName: TypeAlias = Literal["screen_change", "force_capture", "resource_available"]
+EventName: TypeAlias = Literal["screen_change", "force_capture", "resource_available", "config_updated"]
 
 
 def _utc_now_iso() -> str:
@@ -32,4 +32,9 @@ class ResourceAvailableEvent(BaseEvent):
     name: EventName = field(default="resource_available", init=False)
 
 
-Event: TypeAlias = ScreenChangeEvent | ForceCaptureEvent | ResourceAvailableEvent
+@dataclass(slots=True)
+class ConfigUpdatedEvent(BaseEvent):
+    name: EventName = field(default="config_updated", init=False)
+
+
+Event: TypeAlias = ScreenChangeEvent | ForceCaptureEvent | ResourceAvailableEvent | ConfigUpdatedEvent
