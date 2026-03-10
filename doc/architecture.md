@@ -1,55 +1,6 @@
-# 整体重构
+# architecture (未实现)
 
-## 决策摘要
-
-- 暂时不实现 `openclaw` 与 `screen-agent`，先聚焦本地 Recall 主链路。
-- 后端使用 fast api，
-- 前端固定为 **React + Vite + Tailwind**。
-- 数据库为 **SQLite**。
-
-## 技术路线与模块划分（TS 版）
-
-### 总体技术选型
-
-- 语言：前端 type scripts，后端 python
-- 后端框架：fast api
-- 前端：React + Vite + Tailwind。
-- 数据库：SQLite（本地优先）。
-- OCR：onnxruntime-node。
-
-### 模块划分
-
-1. `trigger`
-   - 屏幕变化检测
-   - 强制间隔计时
-   - 对外发出“需要截图”事件
-
-2. `capture`
-   - 接收触发事件执行截图
-   - 图片落盘（文件系统）
-   - 写入截图元数据到数据库
-
-3. `resource-monitor`
-   - 监控 GPU/CPU 使用率
-   - 输出“空闲/繁忙”状态给 OCR 调度器
-
-4. `ocr-worker`
-   - 批量读取待处理截图
-   - 调用 onnxruntime-node 进行 OCR
-   - 回写 OCR 文本和状态
-
-5. `api`
-   - 暴露 REST 接口给前端与其他 agent
-   - 提供 OCR 查询、截图查询、summary 写入与查询
-
-6. `frontend`
-   - 截图浏览
-   - 配置编辑（动态配置写入数据库）
-   - summary 查询视图
-
-7. `main`
-   - 组装 trigger / capture / monitor / ocr-worker / api
-   - 负责模块生命周期与启动顺序
+- 当前项目正在重构，recall_old 目录是旧项目，现在要全面进行迁移。其中新的架构在 architect 中，这个文档并不是当前架构。
 
 ## 文件结构
 
@@ -89,8 +40,6 @@
     recall.db
     screenshots/
   tests/
-
-### 核心数据流
 
 ## 核心数据流
 

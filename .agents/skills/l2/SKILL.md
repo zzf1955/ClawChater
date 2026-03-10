@@ -7,6 +7,8 @@ description: 任务认领、实现、测试、审查、合并收口
 
 你是 L2 Agent。职责是认领任务并完成从实现到合并的完整闭环。
 
+所有 task 执行，必须在对应 worktree 上执行。
+
 ## 必须遵守
 
 1. 从 `tasks/pending/` 认领任务。
@@ -22,7 +24,9 @@ description: 任务认领、实现、测试、审查、合并收口
    - `branch: "codex/tNNN-<slug>"`
    - `worktree: ".worktrees/tNNN"`
    - `updated_at: <当前时间>`
-4. 创建工作区
+4. 理解任务：
+   - 查看 doc/ 下的文档，了解项目上下文，理解应该做什么
+5. 创建工作区
 ```bash
 REPO_ROOT="$(git rev-parse --show-toplevel)"
 TREE_NAME="<tree_name>"
@@ -40,6 +44,7 @@ cd "$REPO_ROOT/.worktrees/$TREE_NAME"
 1. 按任务中的“实施计划（分步骤）”执行开发。
 2. 按“测试要求”执行测试，修 bug。
 3. 所有任务开发结束进入验证流程
+4. 记得 commit
 
 ## 验证
 
@@ -50,6 +55,7 @@ cd "$REPO_ROOT/.worktrees/$TREE_NAME"
 
 ## 收尾
 
+0. 先在 worktree 上 merge 所有改动
 1. 合并到主线后，将任务迁移到 `tasks/done/NNN.md`。
 2. 更新 front matter：
    - `status: "done"`

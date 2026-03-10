@@ -1,26 +1,15 @@
 [project]
 name = "recall"
 version = "0.1.0"
-description = "智能截图记忆助手"
 requires-python = ">=3.11"
+
+authors = [{ name = "zzf621" }]
+
+dependencies = [
+  "fastapi==0.117.1",
+  "uvicorn==0.36.0",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-python_files = ["test_*.py"]
-python_classes = ["Test*"]
-python_functions = ["test_*"]
-addopts = [
-    "-v",
-    "--tb=short",
-    "-ra",
-    "--strict-markers",
-]
-markers = [
-    "unit: 单元测试（快速，无外部依赖）",
-    "integration: 集成测试（可能需要数据库）",
-    "slow: 慢速测试（LLM API 调用等）",
-    "gpu: 需要 GPU 的测试",
-]
-filterwarnings = [
-    "ignore::DeprecationWarning",
-]
+pythonpath = [".."]
