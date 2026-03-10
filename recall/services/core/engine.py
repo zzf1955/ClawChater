@@ -4,7 +4,7 @@ import asyncio
 import inspect
 from typing import Any, Awaitable, Callable, Protocol
 
-from recall.services.capture import capture_screen
+from recall.services.capture import CaptureService
 from recall.services.core.event_bus import EventBus
 from recall.services.core.events import Event, ForceCaptureEvent, ResourceAvailableEvent, ScreenChangeEvent
 from recall.services.monitor.resource_monitor import ResourceMonitor
@@ -29,11 +29,13 @@ class Engine:
         time_monitor: Monitor | None = None,
         resource_monitor: Monitor | None = None,
         capture_handler: CaptureHandler | None = None,
+        capture_service: CaptureService | None = None,
         ocr_worker: OCRWorker | None = None,
     ) -> None:
         self.event_bus = event_bus or EventBus()
         self.ocr_worker = ocr_worker or OCRWorker()
-        self._capture_handler = capture_handler or capture_screen
+        self.capture_service = capture_service or CaptureService()
+        self._capture_handler = capture_handler
 
         self.screen_monitor = screen_monitor or ScreenMonitor(self.event_bus)
         self.time_monitor = time_monitor or TimeMonitor(self.event_bus)
@@ -48,10 +50,18 @@ class Engine:
         self.event_bus.subscribe(ForceCaptureEvent, self._handle_capture)
         self.event_bus.subscribe(ResourceAvailableEvent, self._handle_resource_available)
 
-    async def _handle_capture(self, _event: ScreenChangeEvent | ForceCaptureEvent) -> None:
-        result = self._capture_handler()
-        if inspect.isawaitable(result):
-            await result
+    async def _handle_capture(self, event: ScreenChangeEvent | ForceCaptureEvent) -> None:
+        if self._capture_handler is not None:
+            result = self._capture_handler()
+            if inspect.isawaitable(result):
+                await result
+        else:
+            trigger = "screen_change" if isinstance(event, ScreenChangeEvent) else "force_capture"
+            self.capture_service.capture(trigger=trigger)
+
+        reset_timer = getattr(self.time_monitor, "reset_timer", None)
+        if callable(reset_timer):
+            reset_timer()
 
     async def _handle_resource_available(self, _event: ResourceAvailableEvent) -> None:
         await self.ocr_worker.run_once()
