@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 
-from recall.services.capture import capture_screen
+from recall.services.capture import CaptureService
 from recall.services.core.event_bus import EventBus
 from recall.services.core.events import ForceCaptureEvent, ResourceAvailableEvent, ScreenChangeEvent
 from recall.services.monitor.resource_monitor import ResourceMonitor
@@ -15,6 +15,7 @@ class Engine:
     def __init__(self) -> None:
         self.event_bus = EventBus()
         self.ocr_worker = OCRWorker()
+        self.capture_service = CaptureService()
 
         self.screen_monitor = ScreenMonitor(self.event_bus)
         self.time_monitor = TimeMonitor(self.event_bus)
@@ -28,8 +29,10 @@ class Engine:
         self.event_bus.subscribe(ForceCaptureEvent, self._handle_capture)
         self.event_bus.subscribe(ResourceAvailableEvent, self._handle_resource_available)
 
-    async def _handle_capture(self, _event: ScreenChangeEvent | ForceCaptureEvent) -> None:
-        capture_screen()
+    async def _handle_capture(self, event: ScreenChangeEvent | ForceCaptureEvent) -> None:
+        trigger = "screen_change" if isinstance(event, ScreenChangeEvent) else "force_capture"
+        self.capture_service.capture(trigger=trigger)
+        self.time_monitor.reset_timer()
 
     async def _handle_resource_available(self, _event: ResourceAvailableEvent) -> None:
         await self.ocr_worker.run_once()
