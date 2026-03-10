@@ -67,8 +67,8 @@ def test_engine_force_capture_writes_file_and_db_record(tmp_path: Path, monkeypa
     db_path = tmp_path / "recall.db"
     screenshots_dir = tmp_path / "screenshots"
 
-    monkeypatch.setattr(database, "get_connection", lambda: _connect(db_path))
-    monkeypatch.setattr(screenshot, "get_connection", lambda: _connect(db_path))
+    monkeypatch.setattr(database, "get_connection", lambda *_args, **_kwargs: _connect(db_path))
+    monkeypatch.setattr(screenshot, "get_connection", lambda *_args, **_kwargs: _connect(db_path))
 
     database.init_db()
 
