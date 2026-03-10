@@ -1,6 +1,13 @@
 import type { ScreenshotItem, SummaryItem } from "./types";
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "";
+function normalizeApiBase(rawValue: string | undefined): string {
+  if (!rawValue) {
+    return "";
+  }
+  return rawValue.trim().replace(/\/+$/, "");
+}
+
+const API_BASE = normalizeApiBase(import.meta.env.VITE_API_BASE_URL);
 
 class ApiError extends Error {
   status: number;
