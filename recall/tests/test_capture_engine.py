@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import platform
 import sqlite3
 from pathlib import Path
 
@@ -61,6 +62,34 @@ def test_capture_rolls_back_file_when_db_insert_fails(tmp_path: Path) -> None:
 
     assert created_paths
     assert all(not path.exists() for path in created_paths)
+
+
+def test_capture_default_provider_writes_real_screenshot_file_on_macos(tmp_path: Path) -> None:
+    if platform.system() != "Darwin":
+        pytest.skip("real screenshot capture is only supported on macOS")
+
+    inserted_rows: list[dict[str, object]] = []
+
+    def insert_stub(**kwargs: object) -> int:
+        inserted_rows.append(kwargs)
+        return 1
+
+    service = CaptureService(
+        screenshots_dir=tmp_path / "screenshots",
+        data_dir=tmp_path,
+        insert_record=insert_stub,
+    )
+
+    result = service.capture(trigger="manual")
+    payload = result.absolute_path.read_bytes()
+
+    if payload == b"RECALL_FAKE_JPEG":
+        pytest.skip("screencapture is unavailable or screen recording permission is denied")
+
+    assert result.absolute_path.exists()
+    assert payload.startswith(b"\xff\xd8\xff")
+    assert len(payload) > 1024
+    assert inserted_rows
 
 
 def test_engine_force_capture_writes_file_and_db_record(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
