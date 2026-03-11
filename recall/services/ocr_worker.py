@@ -51,14 +51,17 @@ class OCRWorker:
 
     async def run_once(self) -> dict[str, int]:
         batch_size = self._resolve_batch_size()
+        self._logger.debug("ocr run_once start batch_size=%s", batch_size)
         pending_rows = list_screenshots_by_status(
             "pending",
             limit=batch_size,
             db_path=self._db_path,
         )
         if not pending_rows:
+            self._logger.debug("ocr run_once skipped: no pending screenshots")
             return {"total": 0, "done": 0, "error": 0}
 
+        self._logger.info("ocr run_once processing pending=%d batch_size=%d", len(pending_rows), batch_size)
         done_count = 0
         error_count = 0
         for row in pending_rows:
@@ -73,6 +76,7 @@ class OCRWorker:
                     db_path=self._db_path,
                 )
                 done_count += 1
+                self._logger.debug("ocr success screenshot_id=%s path=%s", screenshot_id, image_path)
             except Exception:
                 self._logger.exception("ocr failed for screenshot_id=%s path=%s", screenshot_id, image_path)
                 update_screenshot_ocr(
@@ -83,6 +87,12 @@ class OCRWorker:
                 )
                 error_count += 1
 
+        self._logger.info(
+            "ocr run_once finished total=%d done=%d error=%d",
+            len(pending_rows),
+            done_count,
+            error_count,
+        )
         return {"total": len(pending_rows), "done": done_count, "error": error_count}
 
     def _resolve_batch_size(self) -> int:

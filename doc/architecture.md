@@ -1,6 +1,7 @@
-# architecture (未实现)
+# architecture
 
-- 当前项目正在重构，recall_old 目录是旧项目，现在要全面进行迁移。其中新的架构在 architect 中，这个文档并不是当前架构。
+- 当前项目正在重构，`recall_old` 是历史实现，`recall/` 是当前主线实现。
+- `recall_old/` 当前策略：归档保留（只读，不再新增功能）。
 
 ## 文件结构
 

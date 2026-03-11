@@ -95,6 +95,7 @@ class ResourceMonitor:
 
     async def run(self) -> None:
         self._running = True
+        self._logger.info("resource monitor started interval=%.2fs", self._interval_seconds)
         while self._running:
             await asyncio.sleep(self._interval_seconds)
             await self.check_and_publish_once()
@@ -102,6 +103,7 @@ class ResourceMonitor:
     async def check_and_publish_once(self) -> bool:
         snapshot = await asyncio.to_thread(self.sample_once)
         if not self._is_resource_available(snapshot):
+            self._logger.debug("resource_available skipped: resource busy")
             return False
 
         await self._event_bus.publish(
@@ -113,6 +115,11 @@ class ResourceMonitor:
                     "gpu_threshold": snapshot.gpu_threshold,
                 }
             )
+        )
+        self._logger.info(
+            "resource_available published cpu=%.2f gpu=%.2f",
+            snapshot.cpu_usage,
+            snapshot.gpu_usage,
         )
         return True
 
@@ -153,3 +160,4 @@ class ResourceMonitor:
 
     def stop(self) -> None:
         self._running = False
+        self._logger.info("resource monitor stopped")
