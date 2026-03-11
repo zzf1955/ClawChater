@@ -1,13 +1,6 @@
 # architecture
 
 - 当前项目正在重构，`recall_old` 是历史实现，`recall/` 是当前主线实现。
-- 迁移收口方案与执行清单见：`doc/migration-closeout.md`。
-
-## 迁移状态（2026-03-11）
-
-- 模块替代关系已明确（旧模块 -> 新模块）。
-- 数据迁移脚本已提供：`scripts/migrate_recall_old_db.py`。
-- 切换与回滚清单已固化在 `doc/migration-closeout.md`。
 - `recall_old/` 当前策略：归档保留（只读，不再新增功能）。
 
 ## 文件结构
