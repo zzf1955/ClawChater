@@ -1,6 +1,14 @@
-# architecture (未实现)
+# architecture
 
-- 当前项目正在重构，recall_old 目录是旧项目，现在要全面进行迁移。其中新的架构在 architect 中，这个文档并不是当前架构。
+- 当前项目正在重构，`recall_old` 是历史实现，`recall/` 是当前主线实现。
+- 迁移收口方案与执行清单见：`doc/migration-closeout.md`。
+
+## 迁移状态（2026-03-11）
+
+- 模块替代关系已明确（旧模块 -> 新模块）。
+- 数据迁移脚本已提供：`scripts/migrate_recall_old_db.py`。
+- 切换与回滚清单已固化在 `doc/migration-closeout.md`。
+- `recall_old/` 当前策略：归档保留（只读，不再新增功能）。
 
 ## 文件结构
 
