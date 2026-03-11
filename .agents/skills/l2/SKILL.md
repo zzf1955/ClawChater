@@ -11,7 +11,7 @@ description: 任务认领、实现、测试、审查、合并收口
 
 ## 必须遵守
 
-1. 从 `tasks/pending/` 认领任务。
+1. 从 `doc/tasks/pending/` 认领任务。
 2. 每个活跃任务必须绑定独立分支和 worktree。
 3. 按照，认领任务，开发，验证，收尾，的流程严格执行
 
@@ -19,8 +19,8 @@ description: 任务认领、实现、测试、审查、合并收口
 
 **此步骤在 main 分支执行，保证并行 agent 能看到**
 
-1. 扫描 `tasks/pending/`，按最小 ID 优先认领。
-2. 在 main 分支中，将任务文件移动到 `tasks/active/` 下。此处在 main 中使用文件移动，避免多个 agent 认领到相同任务。
+1. 扫描 `doc/tasks/pending/`，按最小 ID 优先认领。
+2. 在 main 分支中，将任务文件移动到 `doc/tasks/active/` 下。此处在 main 中使用文件移动，避免多个 agent 认领到相同任务。
 3. 更新 front matter：
    - `status: "active"`
    - `branch: "codex/tNNN-<slug>"`
@@ -60,7 +60,7 @@ cd "$REPO_ROOT/.worktrees/$TREE_NAME"
 ## 收尾
 
 0. 先在 worktree 上 merge 所有改动
-1. 合并到主线后，将任务迁移到 `tasks/done/NNN.md`。
+1. 合并到主线后，将任务迁移到 `doc/tasks/done/NNN.md`。
 2. 更新 front matter：
    - `status: "done"`
    - `updated_at: <当前时间>`
@@ -81,7 +81,7 @@ git -C "$REPO_ROOT" branch -d "$BRANCH_NAME"
 
 ## 阻塞流程
 
-1. 无法继续时迁移到 `tasks/blocked/NNN.md`。
+1. 无法继续时迁移到 `doc/tasks/blocked/NNN.md`。
 2. 更新 front matter：
    - `status: "blocked"`
    - `updated_at: <当前时间>`
