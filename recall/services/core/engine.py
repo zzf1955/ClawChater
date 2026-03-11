@@ -6,7 +6,7 @@ from typing import Any, Awaitable, Callable, Protocol
 
 from recall.services.capture import CaptureService
 from recall.services.core.event_bus import EventBus
-from recall.services.core.events import Event, ForceCaptureEvent, ResourceAvailableEvent, ScreenChangeEvent
+from recall.services.core.events import BaseEvent, ConfigUpdatedEvent, ForceCaptureEvent, ResourceAvailableEvent, ScreenChangeEvent
 from recall.services.monitor.resource_monitor import ResourceMonitor
 from recall.services.monitor.screen_monitor import ScreenMonitor
 from recall.services.monitor.time_monitor import TimeMonitor
@@ -52,6 +52,13 @@ class Engine:
         self.event_bus.subscribe(ScreenChangeEvent, self._handle_capture)
         self.event_bus.subscribe(ForceCaptureEvent, self._handle_capture)
         self.event_bus.subscribe(ResourceAvailableEvent, self._handle_resource_available)
+        self.event_bus.subscribe(ConfigUpdatedEvent, self._handle_config_updated)
+
+    def _reload_monitor_configs(self) -> None:
+        for monitor in (self.screen_monitor, self.time_monitor):
+            reload_config = getattr(monitor, "reload_config", None)
+            if callable(reload_config):
+                reload_config()
 
     async def _handle_capture(self, event: ScreenChangeEvent | ForceCaptureEvent) -> None:
         if self._capture_handler is not None:
@@ -69,14 +76,17 @@ class Engine:
     async def _handle_resource_available(self, _event: ResourceAvailableEvent) -> None:
         await self.ocr_worker.run_once()
 
+    async def _handle_config_updated(self, _event: ConfigUpdatedEvent) -> None:
+        self._reload_monitor_configs()
+
     def register_handler(
         self,
-        event_type: type[ScreenChangeEvent | ForceCaptureEvent | ResourceAvailableEvent],
-        handler: Callable[[Event], Awaitable[None]],
+        event_type: type[BaseEvent],
+        handler: Callable[[BaseEvent], Awaitable[None]],
     ) -> bool:
         return self.event_bus.subscribe(event_type, handler)
 
-    async def trigger(self, event: Event) -> None:
+    async def trigger(self, event: BaseEvent) -> None:
         await self.event_bus.publish(event)
 
     def get_status(self) -> dict[str, int | bool]:
@@ -93,6 +103,7 @@ class Engine:
             return
 
         self._running = True
+        self._reload_monitor_configs()
         self._tasks = [
             asyncio.create_task(monitor.run())
             for monitor in self._monitors

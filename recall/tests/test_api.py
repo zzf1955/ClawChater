@@ -9,18 +9,23 @@ import recall.config as config
 from recall.app import create_app
 from recall.db.database import init_db
 from recall.db.screenshot import create_screenshot
+from recall.services.core.events import ConfigUpdatedEvent
 
 
 class FakeEngine:
     def __init__(self) -> None:
         self.start_calls = 0
         self.stop_calls = 0
+        self.triggered_events: list[object] = []
 
     async def start(self) -> None:
         self.start_calls += 1
 
     async def stop(self) -> None:
         self.stop_calls += 1
+
+    async def trigger(self, event: object) -> None:
+        self.triggered_events.append(event)
 
 
 def _prepare_paths(tmp_path: Path, monkeypatch) -> tuple[Path, Path]:
@@ -145,6 +150,7 @@ def test_summary_and_config_routes(tmp_path: Path, monkeypatch) -> None:
         config_update = client.post("/api/config", json={"OCR_BATCH_SIZE": "20"})
         assert config_update.status_code == 200
         assert config_update.json()["OCR_BATCH_SIZE"] == "20"
+        assert any(isinstance(event, ConfigUpdatedEvent) for event in client.app.state.engine.triggered_events)
 
         invalid_config = client.post("/api/config", json={"   ": "1"})
         assert invalid_config.status_code == 422

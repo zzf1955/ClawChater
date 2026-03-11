@@ -4,10 +4,13 @@ import hashlib
 import platform
 import subprocess
 import tempfile
+from io import BytesIO
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Callable
+
+from PIL import Image
 
 from recall.config import DATA_DIR, SCREENSHOTS_DIR
 from recall.db.screenshot import insert_screenshot
@@ -67,7 +70,22 @@ class CaptureService:
 
     @staticmethod
     def _build_phash(payload: bytes) -> str:
-        return hashlib.sha256(payload).hexdigest()[:16]
+        try:
+            with Image.open(BytesIO(payload)) as image:
+                grayscale = image.convert("L").resize((9, 8), Image.Resampling.BILINEAR)
+                pixels = list(grayscale.getdata())
+        except Exception:
+            return hashlib.sha256(payload).hexdigest()[:16]
+
+        bits = 0
+        for row in range(8):
+            row_offset = row * 9
+            for col in range(8):
+                left = pixels[row_offset + col]
+                right = pixels[row_offset + col + 1]
+                bits = (bits << 1) | int(left > right)
+
+        return f"{bits:016x}"
 
     def current_screen_hash(self) -> str | None:
         try:

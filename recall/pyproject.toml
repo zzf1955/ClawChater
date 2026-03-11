@@ -8,6 +8,7 @@ authors = [{ name = "zzf621" }]
 dependencies = [
   "fastapi==0.117.1",
   "uvicorn==0.36.0",
+  "pillow==11.3.0",
 ]
 
 [tool.pytest.ini_options]

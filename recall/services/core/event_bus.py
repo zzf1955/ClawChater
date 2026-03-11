@@ -5,9 +5,9 @@ import logging
 from threading import RLock
 from typing import Awaitable, Callable
 
-from recall.services.core.events import BaseEvent, Event
+from recall.services.core.events import BaseEvent
 
-Handler = Callable[[Event], Awaitable[None]]
+Handler = Callable[[BaseEvent], Awaitable[None]]
 
 class EventBus:
     def __init__(self) -> None:
@@ -32,7 +32,7 @@ class EventBus:
                 return sum(len(handlers) for handlers in self._subscribers.values())
             return len(self._subscribers[event_type])
 
-    async def publish(self, event: Event) -> None:
+    async def publish(self, event: BaseEvent) -> None:
         with self._lock:
             handlers = tuple(self._subscribers[type(event)])
 

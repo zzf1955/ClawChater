@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from pathlib import Path
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.responses import FileResponse
 
 from recall.api.schemas import ScreenshotItem, SettingsUpdate, SummaryCreate, SummaryItem
@@ -11,6 +11,7 @@ from recall.config import DATA_DIR
 from recall.db.screenshot import get_screenshot, list_screenshots
 from recall.db.setting import get_all_settings, update_settings
 from recall.db.summary import create_summary, list_summaries
+from recall.services.core.events import ConfigUpdatedEvent
 
 router = APIRouter(prefix="/api", tags=["api"])
 
@@ -88,8 +89,16 @@ def get_config() -> dict[str, str]:
 
 
 @router.post("/config")
-def update_config(payload: SettingsUpdate) -> dict[str, str]:
+async def update_config(payload: SettingsUpdate, request: Request) -> dict[str, str]:
     try:
-        return update_settings(payload.root)
+        updated = update_settings(payload.root)
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    engine = getattr(request.app.state, "engine", None)
+    trigger = getattr(engine, "trigger", None)
+    if callable(trigger):
+        updated_keys = ",".join(sorted(payload.root.keys())) if payload.root else "*"
+        await trigger(ConfigUpdatedEvent(payload={"updated_keys": updated_keys}))
+
+    return updated
