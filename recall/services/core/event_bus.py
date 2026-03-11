@@ -35,6 +35,12 @@ class EventBus:
     async def publish(self, event: BaseEvent) -> None:
         with self._lock:
             handlers = tuple(self._subscribers[type(event)])
+        self._logger.debug(
+            "publishing event=%s handler_count=%d payload=%s",
+            event.name,
+            len(handlers),
+            event.payload,
+        )
 
         for handler in handlers:
             try:

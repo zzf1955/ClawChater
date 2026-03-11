@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import logging
 import platform
 import subprocess
 import tempfile
@@ -34,6 +35,7 @@ class CaptureService:
         file_writer: Callable[[Path, bytes], None] | None = None,
         insert_record: Callable[..., int] = insert_screenshot,
     ) -> None:
+        self._logger = logging.getLogger(__name__)
         self._screenshots_dir = screenshots_dir
         self._data_dir = data_dir
         self._screenshot_provider = screenshot_provider or self._default_screenshot_provider
@@ -91,12 +93,15 @@ class CaptureService:
         try:
             payload = self._screenshot_provider()
         except Exception:
+            self._logger.exception("current_screen_hash failed to get screenshot payload")
             return None
         if not payload:
+            self._logger.debug("current_screen_hash got empty payload")
             return None
         return self._build_phash(payload)
 
     def capture(self, trigger: str, window_title: str | None = None, process_name: str | None = None) -> CaptureResult:
+        self._logger.info("capture start trigger=%s", trigger)
         captured_at_dt = datetime.now(timezone.utc)
         captured_at = captured_at_dt.isoformat()
         day_bucket = captured_at_dt.strftime("%Y-%m-%d")
@@ -124,8 +129,15 @@ class CaptureService:
         except Exception:
             if absolute_path.exists():
                 absolute_path.unlink()
+            self._logger.exception("capture failed trigger=%s path=%s", trigger, absolute_path)
             raise
 
+        self._logger.info(
+            "capture success trigger=%s screenshot_id=%s path=%s",
+            trigger,
+            screenshot_id,
+            relative_path,
+        )
         return CaptureResult(
             screenshot_id=screenshot_id,
             captured_at=captured_at,

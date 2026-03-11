@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import asyncio
 import inspect
+import logging
 from typing import Any, Awaitable, Callable, Protocol
 
+from recall.config import DB_PATH
 from recall.services.capture import CaptureService
 from recall.services.core.event_bus import EventBus
 from recall.services.core.events import BaseEvent, ConfigUpdatedEvent, ForceCaptureEvent, ResourceAvailableEvent, ScreenChangeEvent
@@ -32,6 +34,7 @@ class Engine:
         capture_service: CaptureService | None = None,
         ocr_worker: OCRWorker | None = None,
     ) -> None:
+        self._logger = logging.getLogger(__name__)
         self.event_bus = event_bus or EventBus()
         self.ocr_worker = ocr_worker or OCRWorker()
         self.capture_service = capture_service or CaptureService()
@@ -40,9 +43,10 @@ class Engine:
         self.screen_monitor = screen_monitor or ScreenMonitor(
             self.event_bus,
             hash_provider=self.capture_service.current_screen_hash,
+            db_path=DB_PATH,
         )
-        self.time_monitor = time_monitor or TimeMonitor(self.event_bus)
-        self.resource_monitor = resource_monitor or ResourceMonitor(self.event_bus)
+        self.time_monitor = time_monitor or TimeMonitor(self.event_bus, db_path=DB_PATH)
+        self.resource_monitor = resource_monitor or ResourceMonitor(self.event_bus, db_path=DB_PATH)
         self._monitors = [self.screen_monitor, self.time_monitor, self.resource_monitor]
         self._tasks: list[asyncio.Task] = []
         self._running = False
@@ -61,23 +65,42 @@ class Engine:
                 reload_config()
 
     async def _handle_capture(self, event: ScreenChangeEvent | ForceCaptureEvent) -> None:
+        self._logger.info("capture trigger received event=%s payload=%s", event.name, event.payload)
         if self._capture_handler is not None:
             result = self._capture_handler()
             if inspect.isawaitable(result):
                 await result
+            self._logger.debug("capture handler finished via injected handler event=%s", event.name)
         else:
             trigger = "screen_change" if isinstance(event, ScreenChangeEvent) else "force_capture"
-            self.capture_service.capture(trigger=trigger)
+            capture_result = self.capture_service.capture(trigger=trigger)
+            self._logger.info(
+                "capture completed event=%s screenshot_id=%s path=%s phash=%s",
+                event.name,
+                capture_result.screenshot_id,
+                capture_result.file_path,
+                capture_result.phash,
+            )
 
         reset_timer = getattr(self.time_monitor, "reset_timer", None)
         if callable(reset_timer):
             reset_timer()
+            self._logger.debug("time monitor reset after capture event=%s", event.name)
 
-    async def _handle_resource_available(self, _event: ResourceAvailableEvent) -> None:
-        await self.ocr_worker.run_once()
+    async def _handle_resource_available(self, event: ResourceAvailableEvent) -> None:
+        self._logger.info("resource_available received payload=%s", event.payload)
+        result = await self.ocr_worker.run_once()
+        self._logger.info(
+            "ocr batch done total=%s done=%s error=%s",
+            result.get("total", 0),
+            result.get("done", 0),
+            result.get("error", 0),
+        )
 
-    async def _handle_config_updated(self, _event: ConfigUpdatedEvent) -> None:
+    async def _handle_config_updated(self, event: ConfigUpdatedEvent) -> None:
+        self._logger.info("config_updated received payload=%s", event.payload)
         self._reload_monitor_configs()
+        self._logger.debug("monitor configs reloaded")
 
     def register_handler(
         self,
@@ -87,6 +110,7 @@ class Engine:
         return self.event_bus.subscribe(event_type, handler)
 
     async def trigger(self, event: BaseEvent) -> None:
+        self._logger.debug("manual trigger event=%s payload=%s", event.name, event.payload)
         await self.event_bus.publish(event)
 
     def get_status(self) -> dict[str, int | bool]:
@@ -100,6 +124,7 @@ class Engine:
 
     async def start(self) -> None:
         if self._running:
+            self._logger.debug("engine start skipped: already running")
             return
 
         self._running = True
@@ -108,9 +133,11 @@ class Engine:
             asyncio.create_task(monitor.run())
             for monitor in self._monitors
         ]
+        self._logger.info("engine started monitors=%d", len(self._monitors))
 
     async def stop(self) -> None:
         if not self._running:
+            self._logger.debug("engine stop skipped: not running")
             return
 
         self._running = False
@@ -122,3 +149,4 @@ class Engine:
 
         await asyncio.gather(*self._tasks, return_exceptions=True)
         self._tasks.clear()
+        self._logger.info("engine stopped")

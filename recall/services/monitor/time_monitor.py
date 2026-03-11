@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 import time
 from pathlib import Path
 from typing import Callable
@@ -20,6 +21,7 @@ class TimeMonitor:
         db_path: Path | None = None,
         setting_reader: Callable[..., str | None] = get_setting,
     ) -> None:
+        self._logger = logging.getLogger(__name__)
         self._event_bus = event_bus
         self._interval_seconds = interval_seconds
         self._default_interval_seconds = max(1.0, float(interval_seconds))
@@ -33,8 +35,11 @@ class TimeMonitor:
 
     def reset_timer(self) -> None:
         self._deadline = self._now_fn() + self._interval_seconds
+        self._logger.debug("time monitor reset deadline_in=%.2fs", self._interval_seconds)
 
     def _read_setting(self, key: str) -> str | None:
+        if self._db_path is None and self._setting_reader is get_setting:
+            return None
         try:
             return self._setting_reader(key, db_path=self._db_path)
         except TypeError:
@@ -60,16 +65,22 @@ class TimeMonitor:
         if updated_interval != self._interval_seconds:
             self._interval_seconds = updated_interval
             self.reset_timer()
+            self._logger.info("time monitor interval updated interval=%.2fs", self._interval_seconds)
 
     async def tick(self) -> bool:
-        if self._now_fn() < self._deadline:
+        now = self._now_fn()
+        remaining = self._deadline - now
+        if now < self._deadline:
+            self._logger.debug("time tick skip remaining=%.2fs", remaining)
             return False
         await self._event_bus.publish(ForceCaptureEvent())
+        self._logger.info("force_capture published overdue=%.2fs", max(0.0, -remaining))
         self.reset_timer()
         return True
 
     async def run(self) -> None:
         self._running = True
+        self._logger.info("time monitor started interval=%.2fs", self._interval_seconds)
         while self._running:
             self.reload_config()
             await self._sleep_fn(self._interval_seconds)
@@ -77,3 +88,4 @@ class TimeMonitor:
 
     def stop(self) -> None:
         self._running = False
+        self._logger.info("time monitor stopped")

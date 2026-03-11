@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
+import logging
+from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from typing import Callable
 
@@ -13,6 +15,42 @@ from recall.api.routes import router
 from recall.config import AppSettings, FRONTEND_DIST_DIR, ensure_data_dirs
 from recall.db.database import init_db
 from recall.services.core.engine import Engine
+
+
+LOGGER = logging.getLogger(__name__)
+
+
+def _configure_logging(log_file: Path, log_level: str) -> None:
+    root_logger = logging.getLogger()
+    if getattr(root_logger, "_recall_logging_configured", False):
+        return
+
+    resolved_level = getattr(logging, log_level.upper(), logging.DEBUG)
+    root_logger.setLevel(resolved_level)
+
+    formatter = logging.Formatter(
+        fmt="%(asctime)s %(levelname)s [%(name)s] %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+    )
+
+    stream_handler = logging.StreamHandler()
+    stream_handler.setFormatter(formatter)
+    stream_handler.setLevel(resolved_level)
+
+    log_file.parent.mkdir(parents=True, exist_ok=True)
+    file_handler = RotatingFileHandler(
+        filename=log_file,
+        maxBytes=5 * 1024 * 1024,
+        backupCount=5,
+        encoding="utf-8",
+    )
+    file_handler.setFormatter(formatter)
+    file_handler.setLevel(resolved_level)
+
+    root_logger.addHandler(stream_handler)
+    root_logger.addHandler(file_handler)
+    setattr(root_logger, "_recall_logging_configured", True)
+    LOGGER.info("logging initialized level=%s file=%s", log_level.upper(), log_file)
 
 
 def _is_safe_frontend_path(root_dir: Path, candidate: Path) -> bool:
@@ -59,16 +97,21 @@ def create_app(
     engine_factory: Callable[[], Engine] = Engine,
     frontend_dist_dir: Path | None = FRONTEND_DIST_DIR,
 ) -> FastAPI:
+    settings = AppSettings()
+
     @asynccontextmanager
     async def lifespan(app: FastAPI):
         ensure_data_dirs_fn()
+        _configure_logging(settings.log_file, settings.log_level)
         init_db_fn()
         engine = engine_factory()
         app.state.engine = engine
+        LOGGER.info("engine starting")
         await engine.start()
         try:
             yield
         finally:
+            LOGGER.info("engine stopping")
             await engine.stop()
 
     app = FastAPI(title="Recall API", lifespan=lifespan)
