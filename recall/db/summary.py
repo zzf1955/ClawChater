@@ -1,22 +1,14 @@
 from __future__ import annotations
 
-from datetime import datetime
 from pathlib import Path
 from typing import Any
 
 from recall.db.database import db_session, get_connection
-
-
-def _parse_time(value: str) -> datetime:
-    normalized = value.replace("Z", "+00:00")
-    try:
-        return datetime.fromisoformat(normalized)
-    except ValueError as exc:
-        raise ValueError(f"invalid ISO8601 time: {value}") from exc
+from recall.utils.time_parse import parse_iso8601
 
 
 def _validate_time_range(start_time: str, end_time: str) -> None:
-    if _parse_time(start_time) > _parse_time(end_time):
+    if parse_iso8601(start_time) > parse_iso8601(end_time):
         raise ValueError("start_time must be less than or equal to end_time")
 
 

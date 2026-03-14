@@ -7,6 +7,7 @@ from typing import Callable
 
 from recall.db.setting import get_setting
 from recall.services.core.events import ScreenChangeEvent
+from recall.services.monitor.utils import parse_positive_float, parse_positive_int, read_setting
 
 
 def hamming_distance_hex(left: str, right: str) -> int:
@@ -41,45 +42,15 @@ class ScreenMonitor:
         self._last_hash: str | None = None
         self.reload_config()
 
-    def _read_setting(self, key: str) -> str | None:
-        if self._db_path is None and self._setting_reader is get_setting:
-            return None
-        try:
-            return self._setting_reader(key, db_path=self._db_path)
-        except TypeError:
-            return self._setting_reader(key)
-        except Exception:
-            return None
-
-    @staticmethod
-    def _parse_positive_float(raw: str | None, default: float) -> float:
-        if raw is None:
-            return default
-        try:
-            value = float(raw)
-        except ValueError:
-            return default
-        return value if value > 0 else default
-
-    @staticmethod
-    def _parse_positive_int(raw: str | None, default: int) -> int:
-        if raw is None:
-            return default
-        try:
-            value = int(raw)
-        except ValueError:
-            return default
-        return value if value > 0 else default
-
     def reload_config(self) -> None:
         old_interval = self._interval_seconds
         old_threshold = self._change_threshold
-        self._interval_seconds = self._parse_positive_float(
-            self._read_setting("SCREEN_CHECK_INTERVAL"),
+        self._interval_seconds = parse_positive_float(
+            read_setting("SCREEN_CHECK_INTERVAL", db_path=self._db_path, setting_reader=self._setting_reader),
             self._default_interval_seconds,
         )
-        self._change_threshold = self._parse_positive_int(
-            self._read_setting("CHANGE_THRESHOLD"),
+        self._change_threshold = parse_positive_int(
+            read_setting("CHANGE_THRESHOLD", db_path=self._db_path, setting_reader=self._setting_reader),
             self._default_change_threshold,
         )
         if old_interval != self._interval_seconds or old_threshold != self._change_threshold:

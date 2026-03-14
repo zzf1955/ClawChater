@@ -8,6 +8,7 @@ from typing import Callable
 
 from recall.db.setting import get_setting
 from recall.services.core.events import ForceCaptureEvent
+from recall.services.monitor.utils import parse_positive_float, read_setting
 
 
 class TimeMonitor:
@@ -37,29 +38,9 @@ class TimeMonitor:
         self._deadline = self._now_fn() + self._interval_seconds
         self._logger.debug("time monitor reset deadline_in=%.2fs", self._interval_seconds)
 
-    def _read_setting(self, key: str) -> str | None:
-        if self._db_path is None and self._setting_reader is get_setting:
-            return None
-        try:
-            return self._setting_reader(key, db_path=self._db_path)
-        except TypeError:
-            return self._setting_reader(key)
-        except Exception:
-            return None
-
-    @staticmethod
-    def _parse_positive_float(raw: str | None, default: float) -> float:
-        if raw is None:
-            return default
-        try:
-            value = float(raw)
-        except ValueError:
-            return default
-        return value if value > 0 else default
-
     def reload_config(self) -> None:
-        updated_interval = self._parse_positive_float(
-            self._read_setting("FORCE_INTERVAL"),
+        updated_interval = parse_positive_float(
+            read_setting("FORCE_INTERVAL", db_path=self._db_path, setting_reader=self._setting_reader),
             self._default_interval_seconds,
         )
         if updated_interval != self._interval_seconds:
