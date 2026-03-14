@@ -10,6 +10,7 @@ from typing import Callable
 
 from recall.db.setting import get_setting
 from recall.services.core.events import ResourceAvailableEvent
+from recall.services.monitor.utils import read_setting
 
 
 @dataclass(slots=True)
@@ -136,11 +137,7 @@ class ResourceMonitor:
         )
 
     def _read_threshold(self, key: str, default_value: float) -> float:
-        try:
-            raw_value = get_setting(key, db_path=self._db_path)
-        except Exception:
-            self._logger.debug("read threshold failed for %s, use default %.2f", key, default_value)
-            return default_value
+        raw_value = read_setting(key, db_path=self._db_path)
         return _parse_threshold(raw_value, default_value)
 
     def _is_resource_available(self, snapshot: ResourceSnapshot) -> bool:

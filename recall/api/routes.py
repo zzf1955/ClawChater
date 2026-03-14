@@ -12,14 +12,14 @@ from recall.db.screenshot import get_screenshot, list_screenshots
 from recall.db.setting import get_all_settings, update_settings
 from recall.db.summary import create_summary, list_summaries
 from recall.services.core.events import ConfigUpdatedEvent
+from recall.utils.time_parse import parse_iso8601
 
 router = APIRouter(prefix="/api", tags=["api"])
 
 
 def _parse_iso8601(value: str) -> datetime:
-    normalized = value.replace("Z", "+00:00")
     try:
-        return datetime.fromisoformat(normalized)
+        return parse_iso8601(value)
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=f"invalid ISO8601 time: {value}") from exc
 
