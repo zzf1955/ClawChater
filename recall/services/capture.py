@@ -16,6 +16,8 @@ from PIL import Image
 from recall.config import DATA_DIR, SCREENSHOTS_DIR
 from recall.db.screenshot import insert_screenshot
 
+_logger = logging.getLogger(__name__)
+
 
 @dataclass(frozen=True)
 class CaptureResult:
@@ -59,6 +61,7 @@ class CaptureService:
             )
             payload = temp_path.read_bytes()
         except Exception:
+            _logger.warning("screencapture failed, using placeholder", exc_info=True)
             payload = b"RECALL_FAKE_JPEG"
         finally:
             temp_path.unlink(missing_ok=True)
@@ -77,6 +80,7 @@ class CaptureService:
                 grayscale = image.convert("L").resize((9, 8), Image.Resampling.BILINEAR)
                 pixels = list(grayscale.getdata())
         except Exception:
+            _logger.warning("PIL open failed, falling back to sha256 hash", exc_info=True)
             return hashlib.sha256(payload).hexdigest()[:16]
 
         bits = 0
