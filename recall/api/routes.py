@@ -57,7 +57,7 @@ def get_screenshot_image(screenshot_id: int) -> FileResponse:
     if row is None:
         raise HTTPException(status_code=404, detail="Screenshot not found")
     image_path = (DATA_DIR / row["file_path"]).resolve()
-    if DATA_DIR.resolve() not in image_path.parents:
+    if not image_path.is_relative_to(DATA_DIR.resolve()):
         raise HTTPException(status_code=400, detail="Invalid image path")
     if not image_path.exists():
         raise HTTPException(status_code=404, detail="Image file missing")
