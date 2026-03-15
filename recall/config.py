@@ -46,6 +46,11 @@ class AppSettings:
     log_level: str = field(default_factory=_log_level_from_env)
 
 
+INCOMING_DIR: Path | None = (
+    Path(os.getenv("RECALL_INCOMING_DIR")) if os.getenv("RECALL_INCOMING_DIR") else None
+)
+
+
 def ensure_data_dirs() -> None:
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     SCREENSHOTS_DIR.mkdir(parents=True, exist_ok=True)
