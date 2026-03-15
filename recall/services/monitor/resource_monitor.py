@@ -4,6 +4,7 @@ import asyncio
 import logging
 import os
 import subprocess
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable
@@ -62,18 +63,33 @@ def _sample_gpu_usage_nvml() -> float | None:
 
 
 def _sample_gpu_usage_cli() -> float:
+    popen_kwargs: dict = {}
+    if sys.platform == "win32":
+        popen_kwargs["creationflags"] = subprocess.CREATE_NO_WINDOW
     try:
-        output = subprocess.check_output(
+        proc = subprocess.Popen(
             [
                 "nvidia-smi",
                 "--query-gpu=utilization.gpu",
                 "--format=csv,noheader,nounits",
             ],
-            text=True,
+            stdout=subprocess.PIPE,
             stderr=subprocess.DEVNULL,
-            timeout=1.0,
+            text=True,
+            **popen_kwargs,
         )
-    except (FileNotFoundError, subprocess.CalledProcessError, subprocess.TimeoutExpired):
+        try:
+            output, _ = proc.communicate(timeout=3.0)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+            try:
+                proc.communicate(timeout=2.0)
+            except Exception:
+                pass
+            return 0.0
+    except FileNotFoundError:
+        return 0.0
+    except Exception:
         return 0.0
 
     values: list[float] = []
@@ -85,9 +101,7 @@ def _sample_gpu_usage_cli() -> float:
             values.append(float(line))
         except ValueError:
             continue
-    if not values:
-        return 0.0
-    return max(values)
+    return max(values) if values else 0.0
 
 
 def _sample_gpu_usage() -> float:
@@ -129,7 +143,13 @@ class ResourceMonitor:
     async def check_and_publish_once(self) -> bool:
         snapshot = await asyncio.to_thread(self.sample_once)
         if not self._is_resource_available(snapshot):
-            self._logger.debug("resource_available skipped: resource busy")
+            self._logger.info(
+                "resource_available skipped: busy cpu=%.2f/%.2f gpu=%.2f/%.2f",
+                snapshot.cpu_usage,
+                snapshot.cpu_threshold,
+                snapshot.gpu_usage,
+                snapshot.gpu_threshold,
+            )
             return False
 
         await self._event_bus.publish(

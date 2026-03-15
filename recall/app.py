@@ -104,7 +104,11 @@ def create_app(
         ensure_data_dirs_fn()
         _configure_logging(settings.log_file, settings.log_level)
         init_db_fn()
-        engine = engine_factory()
+        try:
+            engine = engine_factory()
+        except RuntimeError as exc:
+            LOGGER.error("startup aborted: %s", exc)
+            raise
         app.state.engine = engine
         LOGGER.info("engine starting")
         await engine.start()

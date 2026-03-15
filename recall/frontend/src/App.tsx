@@ -71,7 +71,7 @@ function AppShell() {
 
 function ScreenshotsPage() {
   const [startTime, setStartTime] = useState(() => formatDefaultDate(-24));
-  const [endTime, setEndTime] = useState(() => formatDefaultDate(0));
+  const [endTime, setEndTime] = useState("");
   const [limit, setLimit] = useState(50);
   const [items, setItems] = useState<ScreenshotItem[]>([]);
   const [selectedId, setSelectedId] = useState<number | null>(null);
@@ -335,7 +335,7 @@ function ConfigPage() {
 
 function SummariesPage() {
   const [startTime, setStartTime] = useState(() => formatDefaultDate(-24));
-  const [endTime, setEndTime] = useState(() => formatDefaultDate(0));
+  const [endTime, setEndTime] = useState("");
   const [items, setItems] = useState<SummaryItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");

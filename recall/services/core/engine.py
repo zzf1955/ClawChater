@@ -41,12 +41,8 @@ class Engine:
             self.ocr_worker = ocr_worker
         else:
             from recall.services.ocr_engine import create_ocr_engine
-            try:
-                ocr_engine = create_ocr_engine()
-            except RuntimeError:
-                self._logger.warning("no OCR engine available, using default")
-                ocr_engine = None
-            self.ocr_worker = OCRWorker() if ocr_engine is None else OCRWorker(ocr_engine=ocr_engine)
+            ocr_engine = create_ocr_engine()
+            self.ocr_worker = OCRWorker(ocr_engine=ocr_engine)
         self.capture_service = capture_service or CaptureService()
         self._capture_handler = capture_handler
 
