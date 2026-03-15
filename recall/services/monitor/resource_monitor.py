@@ -47,7 +47,21 @@ def _sample_cpu_usage() -> float:
     return max(0.0, min(100.0, usage))
 
 
-def _sample_gpu_usage() -> float:
+def _sample_gpu_usage_nvml() -> float | None:
+    try:
+        import pynvml
+    except ImportError:
+        return None
+    try:
+        pynvml.nvmlInit()
+        handle = pynvml.nvmlDeviceGetHandleByIndex(0)
+        util = pynvml.nvmlDeviceGetUtilizationRates(handle)
+        return float(util.gpu)
+    except Exception:
+        return None
+
+
+def _sample_gpu_usage_cli() -> float:
     try:
         output = subprocess.check_output(
             [
@@ -74,6 +88,13 @@ def _sample_gpu_usage() -> float:
     if not values:
         return 0.0
     return max(values)
+
+
+def _sample_gpu_usage() -> float:
+    nvml_result = _sample_gpu_usage_nvml()
+    if nvml_result is not None:
+        return nvml_result
+    return _sample_gpu_usage_cli()
 
 
 class ResourceMonitor:
