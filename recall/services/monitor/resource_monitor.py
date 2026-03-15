@@ -132,6 +132,7 @@ class ResourceMonitor:
         self._gpu_usage_sampler = gpu_usage_sampler
         self._logger = logging.getLogger(__name__)
         self._running = False
+        self._sampling = False
 
     async def run(self) -> None:
         self._running = True
@@ -141,7 +142,20 @@ class ResourceMonitor:
             await self.check_and_publish_once()
 
     async def check_and_publish_once(self) -> bool:
-        snapshot = await asyncio.to_thread(self.sample_once)
+        if self._sampling:
+            self._logger.debug("resource sample already in progress, skipping")
+            return False
+        self._sampling = True
+        try:
+            snapshot = await asyncio.wait_for(
+                asyncio.to_thread(self.sample_once),
+                timeout=10.0,
+            )
+        except asyncio.TimeoutError:
+            self._logger.warning("resource sample timed out after 10s, skipping cycle")
+            return False
+        finally:
+            self._sampling = False
         if not self._is_resource_available(snapshot):
             self._logger.info(
                 "resource_available skipped: busy cpu=%.2f/%.2f gpu=%.2f/%.2f",
