@@ -47,7 +47,8 @@ class AppSettings:
 
 
 INCOMING_DIR: Path | None = (
-    Path(os.getenv("RECALL_INCOMING_DIR")) if os.getenv("RECALL_INCOMING_DIR") else None
+    Path(os.getenv("RECALL_INCOMING_DIR")).expanduser().resolve()
+    if os.getenv("RECALL_INCOMING_DIR") else None
 )
 
 

@@ -51,10 +51,10 @@ def _parse_args() -> argparse.Namespace:
         help=f"Capture interval in seconds (default: {_DEFAULT_INTERVAL})",
     )
     parser.add_argument(
-        "--change-only",
-        action="store_true",
-        default=True,
-        help="Only capture when screen changes (default: True)",
+        "--no-change-only",
+        action="store_false",
+        dest="change_only",
+        help="Capture every interval even if screen is unchanged",
     )
     return parser.parse_args()
 
@@ -76,7 +76,6 @@ def _write_screenshot(
     json_path = sync_dir / f"{stem}.json"
 
     sync_dir.mkdir(parents=True, exist_ok=True)
-    jpg_path.write_bytes(image_bytes)
 
     metadata = {
         "device_id": device_id,
@@ -86,6 +85,10 @@ def _write_screenshot(
         "platform": platform.system(),
         "phash": phash,
     }
+
+    # Write jpg first, then json sidecar — IncomingWatcher only processes
+    # files when both exist, so json acts as the "ready" signal.
+    jpg_path.write_bytes(image_bytes)
     json_path.write_text(json.dumps(metadata, ensure_ascii=False, indent=2), encoding="utf-8")
 
     _logger.info("saved %s (%d bytes)", jpg_path.name, len(image_bytes))
@@ -108,7 +111,8 @@ def run(sync_dir: Path, device_id: str, interval: float, change_only: bool) -> N
         running = False
 
     signal.signal(signal.SIGINT, _stop)
-    signal.signal(signal.SIGTERM, _stop)
+    if hasattr(signal, "SIGTERM"):
+        signal.signal(signal.SIGTERM, _stop)
 
     while running:
         try:

@@ -83,10 +83,9 @@ class IncomingWatcher:
         dest_filename = f"{device_id}_{jpg_path.stem.split('_', 1)[-1]}.jpg"
         dest_path = dest_dir / dest_filename
 
-        shutil.move(str(jpg_path), str(dest_path))
-
         relative_path = (Path("screenshots") / day_bucket / hour_bucket / dest_filename).as_posix()
 
+        # Insert DB record before moving file so a failed insert doesn't orphan the file.
         try:
             screenshot_id = self._insert_record(
                 captured_at=captured_at,
@@ -97,8 +96,10 @@ class IncomingWatcher:
                 phash=metadata.get("phash"),
             )
         except Exception:
-            self._logger.exception("failed to insert record for %s", dest_path)
+            self._logger.exception("failed to insert record for %s", jpg_path)
             return None
+
+        shutil.move(str(jpg_path), str(dest_path))
 
         # Clean up sidecar
         try:
