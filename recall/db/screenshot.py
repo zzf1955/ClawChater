@@ -147,3 +147,30 @@ def delete_screenshot(screenshot_id: int, db_path: Path | None = None) -> bool:
     with db_session(db_path) as conn:
         cursor = conn.execute("DELETE FROM screenshots WHERE id = ?", (screenshot_id,))
     return cursor.rowcount > 0
+
+
+def list_all_file_paths(db_path: Path | None = None) -> list[dict[str, Any]]:
+    with get_connection(db_path) as conn:
+        rows = conn.execute("SELECT id, file_path FROM screenshots").fetchall()
+    return [dict(row) for row in rows]
+
+
+def delete_screenshots_by_ids(ids: list[int], db_path: Path | None = None) -> int:
+    if not ids:
+        return 0
+    with db_session(db_path) as conn:
+        placeholders = ",".join("?" for _ in ids)
+        cursor = conn.execute(f"DELETE FROM screenshots WHERE id IN ({placeholders})", ids)
+    return cursor.rowcount
+
+
+def file_path_exists(file_path: str, db_path: Path | None = None) -> bool:
+    with get_connection(db_path) as conn:
+        row = conn.execute("SELECT 1 FROM screenshots WHERE file_path = ?", (file_path,)).fetchone()
+    return row is not None
+
+
+def get_all_file_path_set(db_path: Path | None = None) -> set[str]:
+    with get_connection(db_path) as conn:
+        rows = conn.execute("SELECT file_path FROM screenshots").fetchall()
+    return {row["file_path"] for row in rows}

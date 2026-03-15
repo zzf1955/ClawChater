@@ -12,6 +12,7 @@ from recall.db.screenshot import get_screenshot, list_screenshots
 from recall.db.setting import get_all_settings, update_settings
 from recall.db.summary import create_summary, list_summaries
 from recall.services.core.events import ConfigUpdatedEvent
+from recall.services.sync import sync_db_with_filesystem
 from recall.utils.time_parse import parse_iso8601
 
 router = APIRouter(prefix="/api", tags=["api"])
@@ -102,3 +103,8 @@ async def update_config(payload: SettingsUpdate, request: Request) -> dict[str, 
         await trigger(ConfigUpdatedEvent(payload={"updated_keys": updated_keys}))
 
     return updated
+
+
+@router.post("/sync")
+def sync_database() -> dict:
+    return sync_db_with_filesystem()
