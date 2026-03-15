@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import logging
+import os
 import shutil
+import sys
 from pathlib import Path
 
 from recall.services.ocr_worker import OCRCallable, _default_ocr_engine
@@ -9,7 +11,30 @@ from recall.services.ocr_worker import OCRCallable, _default_ocr_engine
 _logger = logging.getLogger(__name__)
 
 
+def _register_nvidia_dll_dirs() -> None:
+    """Add nvidia package DLL directories to PATH so LoadLibrary can find them."""
+    if sys.platform != "win32":
+        return
+    import site
+
+    added: list[str] = []
+    for sp in site.getsitepackages():
+        nvidia_base = Path(sp) / "nvidia"
+        if not nvidia_base.is_dir():
+            continue
+        for pkg_dir in nvidia_base.iterdir():
+            bin_dir = pkg_dir / "bin"
+            if bin_dir.is_dir():
+                bin_str = str(bin_dir)
+                if bin_str not in os.environ.get("PATH", ""):
+                    added.append(bin_str)
+    if added:
+        os.environ["PATH"] = os.pathsep.join(added) + os.pathsep + os.environ.get("PATH", "")
+        _logger.debug("added to PATH: %s", added)
+
+
 def _create_rapidocr_engine() -> OCRCallable:
+    _register_nvidia_dll_dirs()
     import onnxruntime as ort
     from rapidocr_onnxruntime import RapidOCR
 
