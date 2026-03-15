@@ -138,6 +138,29 @@ def _build_png_bytes(color: tuple[int, int, int]) -> bytes:
     return buf.getvalue()
 
 
+def test_capture_windows_provider_returns_jpeg(monkeypatch: pytest.MonkeyPatch) -> None:
+    import recall.services.capture as capture_mod
+
+    def fake_capture_windows() -> bytes:
+        img = Image.new("RGB", (16, 16), (128, 128, 128))
+        buf = BytesIO()
+        img.save(buf, format="JPEG")
+        return buf.getvalue()
+
+    monkeypatch.setattr(platform, "system", lambda: "Windows")
+    monkeypatch.setattr(capture_mod, "_capture_windows", fake_capture_windows)
+
+    payload = CaptureService._default_screenshot_provider()
+    assert payload.startswith(b"\xff\xd8\xff")
+    assert len(payload) > 10
+
+
+def test_capture_unsupported_platform_returns_fake(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(platform, "system", lambda: "Linux")
+    payload = CaptureService._default_screenshot_provider()
+    assert payload == b"RECALL_FAKE_JPEG"
+
+
 def test_capture_builds_perceptual_hash_for_image_payload() -> None:
     payload_a = _build_png_bytes((0, 0, 0))
     payload_b = _build_png_bytes((255, 255, 255))

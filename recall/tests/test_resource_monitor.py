@@ -1,9 +1,12 @@
 import asyncio
+import os
+import types
 from pathlib import Path
+from unittest.mock import patch
 
 from recall.db.database import init_db
 from recall.db.setting import set_setting
-from recall.services.monitor.resource_monitor import ResourceMonitor
+from recall.services.monitor.resource_monitor import ResourceMonitor, _sample_cpu_usage
 
 
 class EventBusSpy:
@@ -78,3 +81,28 @@ def test_resource_monitor_reads_thresholds_from_settings(tmp_path: Path) -> None
         assert len(event_bus.events) == 1
 
     asyncio.run(scenario())
+
+
+def test_sample_cpu_usage_falls_back_to_psutil_on_windows() -> None:
+    fake_psutil = types.ModuleType("psutil")
+    fake_psutil.cpu_percent = lambda interval=None: 42.5
+
+    def fake_getloadavg():
+        raise OSError("not supported on Windows")
+
+    with patch.object(os, "getloadavg", fake_getloadavg, create=True), \
+         patch.dict("sys.modules", {"psutil": fake_psutil}):
+        result = _sample_cpu_usage()
+
+    assert result == 42.5
+
+
+def test_sample_cpu_usage_returns_zero_without_psutil() -> None:
+    def fake_getloadavg():
+        raise OSError("not supported on Windows")
+
+    with patch.object(os, "getloadavg", fake_getloadavg, create=True), \
+         patch.dict("sys.modules", {"psutil": None}):
+        result = _sample_cpu_usage()
+
+    assert result == 0.0

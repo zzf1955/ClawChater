@@ -19,6 +19,38 @@ from recall.db.screenshot import insert_screenshot
 _logger = logging.getLogger(__name__)
 
 
+def _capture_macos() -> bytes:
+    with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as temp_file:
+        temp_path = Path(temp_file.name)
+
+    try:
+        subprocess.run(
+            ["screencapture", "-x", "-t", "jpg", str(temp_path)],
+            check=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        return temp_path.read_bytes()
+    except Exception:
+        _logger.warning("screencapture failed, using placeholder", exc_info=True)
+        return b"RECALL_FAKE_JPEG"
+    finally:
+        temp_path.unlink(missing_ok=True)
+
+
+def _capture_windows() -> bytes:
+    from PIL import ImageGrab
+
+    try:
+        img = ImageGrab.grab()
+        buf = BytesIO()
+        img.save(buf, format="JPEG")
+        return buf.getvalue()
+    except Exception:
+        _logger.warning("ImageGrab.grab failed, using placeholder", exc_info=True)
+        return b"RECALL_FAKE_JPEG"
+
+
 @dataclass(frozen=True)
 class CaptureResult:
     screenshot_id: int
@@ -46,27 +78,14 @@ class CaptureService:
 
     @staticmethod
     def _default_screenshot_provider() -> bytes:
-        if platform.system() != "Darwin":
-            return b"RECALL_FAKE_JPEG"
+        system = platform.system()
 
-        with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as temp_file:
-            temp_path = Path(temp_file.name)
+        if system == "Darwin":
+            return _capture_macos()
+        if system == "Windows":
+            return _capture_windows()
 
-        try:
-            subprocess.run(
-                ["screencapture", "-x", "-t", "jpg", str(temp_path)],
-                check=True,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-            )
-            payload = temp_path.read_bytes()
-        except Exception:
-            _logger.warning("screencapture failed, using placeholder", exc_info=True)
-            payload = b"RECALL_FAKE_JPEG"
-        finally:
-            temp_path.unlink(missing_ok=True)
-
-        return payload
+        return b"RECALL_FAKE_JPEG"
 
     @staticmethod
     def _default_file_writer(path: Path, payload: bytes) -> None:

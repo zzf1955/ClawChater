@@ -38,7 +38,11 @@ def _sample_cpu_usage() -> float:
     try:
         one_minute_load = os.getloadavg()[0]
     except OSError:
-        return 0.0
+        try:
+            import psutil
+            return psutil.cpu_percent(interval=0.5)
+        except ImportError:
+            return 0.0
     usage = (one_minute_load / cpu_count) * 100
     return max(0.0, min(100.0, usage))
 
