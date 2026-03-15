@@ -25,6 +25,7 @@
     __init__.py
     capture.py                  # 截屏
     ocr_worker.py               # OCR批处理
+    incoming_watcher.py         # 监控 incoming 目录，导入远程截图
     monitor/
       __init__.py
       resource_monitor.py       # GPU/CPU监控
@@ -36,6 +37,7 @@
       events.py                 # 所有事件类型（很小，一个文件够）
       engine.py                 # 编排器：持有EventBus，组装所有服务
   
+  slave.py                      # 远程截图客户端（Slave 模式）
   frontend/                     # React+Vite+Tailwind
   data/
     recall.db
@@ -111,6 +113,74 @@
   - monitor 不知道 capture 的存在
   - capture 不知道 ocr_worker 的存在
   - 它们之间唯一的共享状态是 SQLite 中 screenshots 表的 ocr_status 字段
+
+## 多端截图（Slave / Host 模式）
+
+支持多台机器协作截图：Slave 机器只截图，通过 syncthing 同步到 Host，Host 端自动导入并 OCR。
+
+### 架构
+
+```
+Slave 机器                          Host 机器
+┌──────────────┐                   ┌──────────────────────────┐
+│ recall.slave │                   │ Engine                   │
+│  截图 + phash │──syncthing──────▶│  IncomingWatcher         │
+│  写入 sync_dir│  (自动同步)       │   轮询 incoming_dir      │
+└──────────────┘                   │   导入 DB + 移动文件      │
+                                   │  OCR Worker              │
+                                   │   处理 pending 截图       │
+                                   └──────────────────────────┘
+```
+
+### Slave 端使用
+
+Slave 是一个轻量独立脚本，不需要数据库和 OCR 环境，只需要截图能力。
+
+```bash
+# 基本用法
+python -m recall.slave --sync-dir /path/to/syncthing/recall-incoming
+
+# 完整参数
+python -m recall.slave \
+    --sync-dir /path/to/syncthing/recall-incoming \
+    --device-id my-laptop \
+    --interval 5 \
+    --no-change-only   # 禁用 phash 变化检测，每次都截图
+```
+
+也可用环境变量配置：
+
+| 环境变量 | 说明 | 默认值 |
+|---------|------|-------|
+| `RECALL_SYNC_DIR` | syncthing 同步目录（必填） | — |
+| `RECALL_DEVICE_ID` | 设备标识 | 主机名 |
+| `RECALL_CAPTURE_INTERVAL` | 截图间隔（秒） | 5 |
+
+每次截图产出两个文件：
+- `{device_id}_{timestamp}.jpg` — 截图
+- `{device_id}_{timestamp}.json` — 元数据（device_id, captured_at, platform, phash）
+
+JSON sidecar 在 JPG 之后写入，IncomingWatcher 以 JSON 存在作为"就绪"信号。
+
+### Host 端配置
+
+Host 端只需设置环境变量指向 syncthing 同步到本机的目录：
+
+```bash
+export RECALL_INCOMING_DIR=/path/to/syncthing/recall-incoming
+```
+
+Engine 启动时如果检测到 `RECALL_INCOMING_DIR`，会自动启动 IncomingWatcher：
+- 每 3 秒轮询 incoming 目录
+- 发现 `.jpg` + `.json` 配对文件后，插入 DB（`ocr_status=pending`），移动到标准 `data/screenshots/YYYY-MM-DD/HH/` 目录
+- 已有 OCR 流程自动处理导入的截图
+
+### syncthing 配置要点
+
+1. Slave 机器和 Host 机器都安装 syncthing
+2. 在两端共享同一个目录（Slave 写入，Host 读取）
+3. Host 端的共享目录路径设为 `RECALL_INCOMING_DIR`
+4. 建议 syncthing 设置为"仅发送"（Slave）和"仅接收"（Host）
 
 ## 数据库设计
 
