@@ -110,4 +110,15 @@ export async function updateConfig(payload: Record<string, string>): Promise<Rec
   });
 }
 
+export interface SyncResult {
+  deleted: number;
+  imported: number;
+  total_db: number;
+  total_files: number;
+}
+
+export async function syncDatabase(): Promise<SyncResult> {
+  return requestJson<SyncResult>("/api/sync", { method: "POST" });
+}
+
 export { ApiError };

@@ -7,8 +7,10 @@ import {
   getScreenshotImageUrl,
   listScreenshots,
   listSummaries,
+  syncDatabase,
   updateConfig,
 } from "./api";
+import type { SyncResult } from "./api";
 import type { ScreenshotItem, SummaryItem } from "./types";
 
 const navItems = [
@@ -250,6 +252,8 @@ function ConfigPage() {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
+  const [syncing, setSyncing] = useState(false);
+  const [syncResult, setSyncResult] = useState<SyncResult | null>(null);
 
   const loadConfig = async () => {
     setLoading(true);
@@ -329,6 +333,50 @@ function ConfigPage() {
         </form>
       )}
       {message && <p className="mt-4 rounded-md bg-slate-50 px-3 py-2 text-sm text-slate-700">{message}</p>}
+
+      <div className="mt-6 border-t border-slate-200 pt-4">
+        <h3 className="mb-3 text-lg font-semibold">数据库对齐</h3>
+        <p className="mb-3 text-sm text-slate-600">清理数据库中文件已缺失的记录，导入磁盘上未索引的截图文件。</p>
+        <button
+          type="button"
+          disabled={syncing}
+          onClick={async () => {
+            setSyncing(true);
+            setSyncResult(null);
+            try {
+              const result = await syncDatabase();
+              setSyncResult(result);
+            } catch (error) {
+              setMessage(error instanceof ApiError ? error.message : "数据库对齐失败");
+            } finally {
+              setSyncing(false);
+            }
+          }}
+          className="rounded-md bg-emerald-700 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-600 disabled:opacity-50"
+        >
+          {syncing ? "对齐中..." : "执行对齐"}
+        </button>
+        {syncResult && (
+          <dl className="mt-3 grid grid-cols-2 gap-2 rounded-md bg-emerald-50 p-3 text-sm sm:grid-cols-4">
+            <div>
+              <dt className="font-medium text-slate-600">已删除</dt>
+              <dd className="text-lg font-semibold text-rose-600">{syncResult.deleted}</dd>
+            </div>
+            <div>
+              <dt className="font-medium text-slate-600">已导入</dt>
+              <dd className="text-lg font-semibold text-emerald-600">{syncResult.imported}</dd>
+            </div>
+            <div>
+              <dt className="font-medium text-slate-600">数据库总数</dt>
+              <dd className="text-lg font-semibold text-slate-800">{syncResult.total_db}</dd>
+            </div>
+            <div>
+              <dt className="font-medium text-slate-600">磁盘文件数</dt>
+              <dd className="text-lg font-semibold text-slate-800">{syncResult.total_files}</dd>
+            </div>
+          </dl>
+        )}
+      </div>
     </section>
   );
 }
