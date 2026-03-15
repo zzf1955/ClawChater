@@ -6,7 +6,15 @@ from unittest.mock import patch
 
 from recall.db.database import init_db
 from recall.db.setting import set_setting
-from recall.services.monitor.resource_monitor import ResourceMonitor, _sample_cpu_usage
+from unittest.mock import MagicMock
+
+from recall.services.monitor.resource_monitor import (
+    ResourceMonitor,
+    _sample_cpu_usage,
+    _sample_gpu_usage,
+    _sample_gpu_usage_nvml,
+    _sample_gpu_usage_cli,
+)
 
 
 class EventBusSpy:
@@ -106,3 +114,40 @@ def test_sample_cpu_usage_returns_zero_without_psutil() -> None:
         result = _sample_cpu_usage()
 
     assert result == 0.0
+
+
+def test_sample_gpu_usage_nvml_returns_value_when_pynvml_available() -> None:
+    fake_pynvml = types.ModuleType("pynvml")
+    fake_pynvml.nvmlInit = lambda: None
+    fake_handle = MagicMock()
+    fake_pynvml.nvmlDeviceGetHandleByIndex = lambda idx: fake_handle
+    fake_util = MagicMock()
+    fake_util.gpu = 55.0
+    fake_pynvml.nvmlDeviceGetUtilizationRates = lambda h: fake_util
+
+    with patch.dict("sys.modules", {"pynvml": fake_pynvml}):
+        result = _sample_gpu_usage_nvml()
+
+    assert result == 55.0
+
+
+def test_sample_gpu_usage_nvml_returns_none_without_pynvml() -> None:
+    with patch.dict("sys.modules", {"pynvml": None}):
+        result = _sample_gpu_usage_nvml()
+
+    assert result is None
+
+
+def test_sample_gpu_usage_prefers_nvml_over_cli() -> None:
+    fake_pynvml = types.ModuleType("pynvml")
+    fake_pynvml.nvmlInit = lambda: None
+    fake_handle = MagicMock()
+    fake_pynvml.nvmlDeviceGetHandleByIndex = lambda idx: fake_handle
+    fake_util = MagicMock()
+    fake_util.gpu = 30.0
+    fake_pynvml.nvmlDeviceGetUtilizationRates = lambda h: fake_util
+
+    with patch.dict("sys.modules", {"pynvml": fake_pynvml}):
+        result = _sample_gpu_usage()
+
+    assert result == 30.0

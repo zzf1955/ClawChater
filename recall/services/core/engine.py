@@ -36,7 +36,16 @@ class Engine:
     ) -> None:
         self._logger = logging.getLogger(__name__)
         self.event_bus = event_bus or EventBus()
-        self.ocr_worker = ocr_worker or OCRWorker()
+        if ocr_worker is not None:
+            self.ocr_worker = ocr_worker
+        else:
+            from recall.services.ocr_engine import create_ocr_engine
+            try:
+                ocr_engine = create_ocr_engine()
+            except RuntimeError:
+                self._logger.warning("no OCR engine available, using default")
+                ocr_engine = None
+            self.ocr_worker = OCRWorker() if ocr_engine is None else OCRWorker(ocr_engine=ocr_engine)
         self.capture_service = capture_service or CaptureService()
         self._capture_handler = capture_handler
 
