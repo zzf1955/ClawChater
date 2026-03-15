@@ -5,8 +5,9 @@ import inspect
 import logging
 from typing import Any, Awaitable, Callable, Protocol
 
-from recall.config import DB_PATH
+from recall.config import DB_PATH, INCOMING_DIR
 from recall.services.capture import CaptureService
+from recall.services.incoming_watcher import IncomingWatcher
 from recall.services.core.event_bus import EventBus
 from recall.services.core.events import BaseEvent, ConfigUpdatedEvent, ForceCaptureEvent, ResourceAvailableEvent, ScreenChangeEvent
 from recall.services.monitor.resource_monitor import ResourceMonitor
@@ -56,7 +57,14 @@ class Engine:
         )
         self.time_monitor = time_monitor or TimeMonitor(self.event_bus, db_path=DB_PATH)
         self.resource_monitor = resource_monitor or ResourceMonitor(self.event_bus, db_path=DB_PATH)
-        self._monitors = [self.screen_monitor, self.time_monitor, self.resource_monitor]
+        self._monitors: list[Monitor] = [self.screen_monitor, self.time_monitor, self.resource_monitor]
+
+        if INCOMING_DIR is not None:
+            self.incoming_watcher: IncomingWatcher | None = IncomingWatcher(incoming_dir=INCOMING_DIR)
+            self._monitors.append(self.incoming_watcher)
+            self._logger.info("incoming watcher enabled dir=%s", INCOMING_DIR)
+        else:
+            self.incoming_watcher = None
         self._tasks: list[asyncio.Task] = []
         self._running = False
         self._register_handlers()
