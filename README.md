@@ -1,6 +1,6 @@
-# ClawChater — 能看到你在做什么的聊天 Bot
+# Tentacle — 多平台用户行为感知系统
 
-通过持续观察用户屏幕（PC + 手机），理解用户当前活动，然后通过 Telegram 主动和用户聊天。
+通过持续观察用户屏幕（PC + 移动端），采集、识别和结构化用户活动数据，为 AI Agent 构建丰富的用户上下文。
 
 ### 核心问题
 
@@ -8,12 +8,14 @@
 
 ### 核心思路
 
-本项目构建了一个**多平台用户行为感知系统**，通过持续、被动地采集用户在 PC 和移动端的屏幕活动，结合 OCR 文本提取和记忆系统，为 AI Agent 构建丰富的用户上下文，再通过消息通道与用户主动交互。
+本项目构建了一个**多平台用户行为感知系统**，通过持续、被动地采集用户在 PC 和移动端的屏幕活动，结合 OCR 文本提取和结构化存储，为 AI Agent 构建丰富的用户上下文。
 
-系统由三部分组成：
-- **Recall（数据采集层）**：在 PC 端和 Android 端持续截图 + OCR，构建用户活动的时间线数据库
-- **Screen Agent（智能分析层）**：基于 LLM 分析采集到的屏幕数据，判断用户当前状态并决策是否主动交互
-- **OpenClaw（消息投递层）**：多渠道消息网关（WeChat / Telegram / WhatsApp 等），将 Agent 的消息送达用户
+系统采用事件驱动架构，核心模块包括：
+- **屏幕监控**：像素差异检测 + 感知哈希（phash）去重，智能捕捉屏幕变化
+- **OCR 引擎**：GPU 空闲时自动提取截图中的文字（RapidOCR + CUDA）
+- **活动记录**：记录活动窗口标题、进程名，构建用户活动时间线
+- **REST API**：提供标准化接口，供上层 AI Agent 查询用户上下文
+- **Web UI**：截图浏览、搜索、配置管理
 
 ### 为什么要多平台
 
@@ -24,178 +26,185 @@
 | PC 端 | 工作内容、代码编写、文档阅读、网页浏览 | 深度工作行为 |
 | 移动端 | 即时通讯、社交媒体、地图导航、购物、日程 | 生活习惯与社交行为 |
 
-单一平台的 Agent 只能看到用户生活的一个切面；**PC + 移动端的融合采集**才能构建出完整的用户行为画像，从而让 Agent 的判断和交互真正有意义。
+单一平台的 Agent 只能看到用户生活的一个切面；**PC + 移动端的融合采集**才能构建出完整的用户行为画像。
 
-### 为什么必须开源
-
-屏幕级的持续数据采集天然与用户隐私高度敏感。微软 Windows Recall 功能就是前车之鉴——它在本地持续截图并建立可搜索的活动记录，功能设计与本项目高度相似，但因隐私争议在发布前被迫搁置重做。核心矛盾在于：**AI Agent 越智能，就越需要大面积、持续性的用户数据；而这种级别的数据采集，用户不可能信任一个闭源的黑盒系统。**
-
-闭源产品无法自证清白——用户无从验证数据是否真的只存在本地、是否被上传、是否被用于训练。因此，这类"AI + 大规模个人信息采集"的系统，几乎只能由开源社区来推动：
-
-- **数据完全本地化**：截图、OCR 文本、记忆数据库全部存储在用户设备上，不经过任何云端
-- **代码可审计**：任何人都可以检查数据流向，确认没有隐蔽的上传行为
-- **用户完全控制**：采集频率、存储策略、数据保留时长均可自行配置和修改
-
-本项目的 Recall 模块采用纯本地架构（SQLite + 本地文件系统），LLM 分析仅发送 OCR 文本摘要而非原始截图，从设计上最小化隐私风险。开源是这类系统获得用户信任的唯一路径。
+屏幕级数据采集天然涉及隐私，因此本项目采用**纯本地架构**（数据不经过云端）并完全开源，确保代码可审计、数据流向透明。
 
 ### 应用场景
 
-本系统的核心架构（多平台采集 → AI 分析 → 主动交互）是通用的，可以灵活适配不同场景：
+本系统的核心架构（多平台采集 → 结构化存储 → API 输出）是通用的，可以灵活适配不同场景：
 
-| 场景 | 说明 | PC 端作用 | 移动端作用 |
-|------|------|----------|-----------|
-| **学习行为分析** | 分析学生在线学习的专注度、分心频率、学习节奏 | 捕捉网课/文档阅读行为 | 捕捉学习间隙的手机使用（刷社交媒体等） |
-| **学习监督助手** | 发现学生走神或长时间未学习时，主动发送提醒和鼓励 | 监测是否在学习相关应用 | 监测是否在娱乐应用停留过久 |
-| **远程办公效率监测** | 分析工作节奏，久坐提醒，工作效率报告 | 工作内容和工具使用分析 | 休息时间和通勤行为 |
-| **老年人数字关怀** | 检测操作困难或疑似诈骗页面，通知家属 | 电脑操作困难检测 | 手机诈骗/异常转账预警 |
-
-当前原型以**学习行为分析与监督**为主要演示场景，但场景可按需替换。
+| 场景 | 说明 |
+|------|------|
+| **AI Agent 上下文构建** | 为任意 AI Agent 提供实时用户行为数据 |
+| **学习行为分析** | 分析在线学习的专注度、分心频率、学习节奏 |
+| **远程办公效率监测** | 分析工作节奏，生成效率报告 |
+| **个人数字生活记录** | 构建可搜索的个人活动时间线 |
 
 ---
 
 ## 系统架构
 
 ```
-Recall (:5000) ──HTTP API──▶ OpenClaw (:18789)
-截图+OCR+存储                 Thinking Agent (分析决策)
-(PC + Android)                Chat Agent (Telegram 聊天)
+┌─────────────────────────────────────────────┐
+│              Tentacle Server                │
+│                                             │
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐  │
+│  │ Screen   │  │  Time    │  │ Resource │  │
+│  │ Monitor  │  │ Monitor  │  │ Monitor  │  │
+│  └────┬─────┘  └────┬─────┘  └────┬─────┘  │
+│       │              │              │        │
+│       └──────────┬───┘──────────────┘        │
+│                  ▼                           │
+│            ┌──────────┐                      │
+│            │ EventBus │                      │
+│            └────┬─────┘                      │
+│                 ▼                            │
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐  │
+│  │ Capture  │  │   OCR    │  │ Incoming │  │
+│  │ Service  │  │ Worker   │  │ Watcher  │  │
+│  └────┬─────┘  └────┬─────┘  └────┬─────┘  │
+│       │              │              │        │
+│       └──────────┬───┘──────────────┘        │
+│                  ▼                           │
+│            ┌──────────┐    ┌──────────┐      │
+│            │  SQLite  │    │ FastAPI  │      │
+│            │ Database │    │ REST API │      │
+│            └──────────┘    └──────────┘      │
+└─────────────────────────────────────────────┘
+         ▲                        ▲
+         │ Syncthing              │ HTTP
+    ┌────┴────┐             ┌─────┴─────┐
+    │  Slave  │             │  Web UI / │
+    │ (远程)   │             │ AI Agent  │
+    └─────────┘             └───────────┘
 ```
 
-两个模块协作，数据单向流动：
-
-- **Recall** 负责截图采集、OCR 文字提取、数据存储
-- **OpenClaw** 负责智能分析和 Telegram 消息投递
-
-### 双 Agent 架构
-
-OpenClaw 内部运行两个 AI Agent：
-
-| Agent | Session Key | 职责 |
-|-------|-------------|------|
-| Thinking Agent | `agent:thinking:main` | 后台观察者，每 5 分钟从 Recall 拉取 OCR 数据分析用户活动 |
-| Chat Agent | `agent:chat:main` | 用户面对面的聊天伙伴，以朋友口吻在 Telegram 上聊天 |
-
-**工作流程**：
-1. Thinking Agent 通过 Heartbeat 定时分析 OCR 数据
-2. 发现有趣内容时，向 Chat Agent 发送指导消息
-3. Chat Agent 收到指导后，以自然口吻在 Telegram 上与用户聊天
-4. 用户回复时，消息先经 Thinking Agent 分析，再由 Chat Agent 回复
+**事件驱动**：三个 Monitor 检测变化 → 通过 EventBus 发布事件 → Capture 截图 → OCR 提取文字 → 存入 SQLite → FastAPI 提供查询接口。
 
 ## 目录结构
 
 ```
-ClawChater/
-├── recall/                      # 模块1: 数据采集服务
-│   ├── main.py                  # 应用入口
-│   ├── app.py                   # RecallApp 主类（协调者）
-│   ├── config.py                # 配置管理（DB 热更新）
-│   ├── db.py                    # SQLite 数据库层
-│   ├── ocr_worker.py            # 后台 OCR 处理（RapidOCR + GPU）
-│   ├── core/                    # 核心业务（截图、依赖注入）
-│   ├── web/                     # Flask REST API + Vue 3 前端
-│   ├── utils/                   # GPU 监控、图片哈希、窗口检测
-│   ├── android/                 # Android 移动端
-│   └── tests/                   # 测试
+tentacle/
+├── recall/                         # 核心服务
+│   ├── app.py                      # FastAPI 应用入口
+│   ├── config.py                   # 配置管理
+│   ├── slave.py                    # 远程采集客户端（通过 Syncthing 同步）
+│   ├── api/
+│   │   ├── routes.py               # REST API 端点
+│   │   └── schemas.py              # Pydantic 数据模型
+│   ├── db/
+│   │   ├── database.py             # SQLite 连接管理
+│   │   ├── schema.sql              # 数据库建表
+│   │   ├── screenshot.py           # 截图表操作
+│   │   ├── setting.py              # 配置表操作
+│   │   └── summary.py              # 摘要表操作
+│   ├── services/
+│   │   ├── capture.py              # 跨平台截图（macOS/Windows）
+│   │   ├── ocr_engine.py           # RapidOCR 引擎初始化
+│   │   ├── ocr_worker.py           # OCR 后台处理
+│   │   ├── incoming_watcher.py     # Syncthing 目录监控
+│   │   ├── sync.py                 # 数据库-文件系统同步
+│   │   ├── core/
+│   │   │   ├── engine.py           # 主编排引擎
+│   │   │   ├── event_bus.py        # 发布-订阅事件系统
+│   │   │   └── events.py           # 事件类型定义
+│   │   └── monitor/
+│   │       ├── screen_monitor.py   # 屏幕变化检测（phash）
+│   │       ├── time_monitor.py     # 定时强制截图
+│   │       ├── resource_monitor.py # CPU/GPU 资源监控
+│   │       └── utils.py            # 监控工具函数
+│   ├── frontend/                   # React + Vite Web UI
+│   │   ├── src/
+│   │   │   ├── App.tsx
+│   │   │   ├── api.ts
+│   │   │   └── types.ts
+│   │   └── dist/                   # 构建产物（FastAPI 静态服务）
+│   ├── utils/
+│   │   └── time_parse.py           # ISO8601 解析
+│   └── tests/                      # 测试套件
 │
-├── openclaw/                    # 模块2: 智能分析 + 消息投递（git submodule）
-│   ├── src/                     # TypeScript 核心代码
-│   │   ├── gateway/             # 网关（WebSocket/HTTP）
-│   │   ├── channels/            # 渠道插件（Telegram）
-│   │   ├── agents/              # AI Agent 运行器
-│   │   └── ...
-│   └── package.json
-│
-├── .tasks/                      # 任务管理系统
-│   ├── backlog/                 # 待领取
-│   ├── wip/                     # 进行中
-│   └── done/                    # 已完成
-│
-├── CLAUDE.md                    # Claude Code 开发指导
-└── README.md                    # 本文件
+├── doc/                            # 项目文档
+├── CLAUDE.md                       # Claude Code 开发指导
+└── README.md                       # 本文件
 ```
 
-## 各模块说明
-
-### Recall — 数据采集层
-
-**职责**：纯数据采集，不含 AI 逻辑
-
-**核心功能**：
-- 像素差异检测 + 强制间隔截图 + 感知哈希（phash）去重
-- GPU 空闲时自动 OCR 提取文字（RapidOCR + CUDA）
-- 记录活动窗口标题和进程名
-- 提供 REST API 供 OpenClaw 查询
-- Web UI 截图浏览和搜索
-
-**API 端点**：
+## API 端点
 
 | 端点 | 说明 |
 |------|------|
-| `GET /api/health` | 健康检查 + 统计 |
-| `GET /api/status` | 服务状态 |
-| `GET /api/recent?since=&limit=50` | 最近截图 OCR 摘要 |
-| `GET /api/search?q=关键词&hours=24` | 搜索截图 |
-| `GET /api/screenshots` | 截图列表（分页） |
-| `GET /api/screenshot/<id>/detail` | 单条截图完整信息 |
-| `GET /api/screenshot/<id>/image` | 截图图片 |
-| `GET /api/activity_summary?hours=1` | 活动统计 |
+| `GET /health` | 健康检查 |
+| `GET /api/screenshots` | 截图列表（支持时间范围过滤） |
+| `GET /api/screenshots/{id}` | 单条截图详情 |
+| `GET /api/screenshots/{id}/image` | 截图图片 |
+| `GET /api/summaries` | 查询活动摘要 |
+| `POST /api/summaries` | 写入活动摘要 |
 | `GET /api/config` | 读取配置 |
 | `POST /api/config` | 更新配置 |
-| `POST /api/summaries` | 写入活动摘要 |
-| `GET /api/summaries?hours=24` | 查询活动摘要 |
+| `POST /api/sync` | 数据库-文件系统同步 |
 
-**数据库表**：
+## 数据库
+
+SQLite，三张表：
 
 | 表 | 用途 |
 |----|------|
-| `screenshots` | 截图元数据（path, timestamp, phash, ocr_text, window_title, process_name） |
-| `groups` | 截图分组 |
-| `settings` | 配置存储（热更新） |
-| `summaries` | 活动摘要（由 Thinking Agent 写入） |
-
-### OpenClaw — 智能分析 + 消息投递层
-
-**职责**：分析用户活动，通过 Telegram 与用户聊天
-
-**架构**：CLI（Commander.js）→ Gateway（WebSocket/HTTP）→ Agent → Channels
-
-**当前渠道**：Telegram（@zzf1955_bot）
-
-**Agent 间通信**：
-- Thinking → Chat：通过 `sessions_send` 工具（`deliver: true, channel: "telegram"`）
-- 共享长期记忆：`~/.openclaw/workspace/facts.json`
+| `screenshots` | 截图元数据（路径、时间戳、phash、OCR 文本、窗口标题、进程名） |
+| `summaries` | 活动摘要 |
+| `settings` | 配置存储（支持热更新） |
 
 ## 快速启动
 
 ```bash
-# 1. 启动 Recall 截图服务
-cd recall && conda run -n recall python main.py
-# 访问 http://127.0.0.1:5000 查看 Web UI
+# 激活 conda 环境
+conda activate recall
 
-# 2. 启动 OpenClaw Gateway
-cd openclaw && pnpm start gateway
+# 启动服务
+python -m recall.app
+# 访问 http://127.0.0.1:8000 查看 Web UI
+
+# 开发模式（热重载）
+RECALL_RELOAD=1 python -m recall.app
 ```
+
+### Slave 模式（远程采集）
+
+在远程机器上运行 Slave，通过 Syncthing 将截图同步到主服务器：
+
+```bash
+RECALL_DEVICE_ID=my-laptop RECALL_SYNC_DIR=/path/to/sync python -m recall.slave
+```
+
+## 配置
+
+通过环境变量或 Web UI 配置：
+
+| 环境变量 | 默认值 | 说明 |
+|---------|--------|------|
+| `RECALL_HOST` | `127.0.0.1` | 监听地址 |
+| `RECALL_PORT` | `8000` | 监听端口 |
+| `RECALL_RELOAD` | `0` | 开发模式热重载 |
+| `RECALL_LOG_LEVEL` | `DEBUG` | 日志级别 |
+| `RECALL_SERVE_FRONTEND` | `1` | 是否提供前端静态文件 |
+| `RECALL_INCOMING_DIR` | - | Syncthing 同步目录 |
+
+运行时参数（通过 Web UI 或 API 修改）：
+
+| 参数 | 默认值 | 说明 |
+|------|--------|------|
+| `SCREEN_CHECK_INTERVAL` | `3` | 屏幕检测间隔（秒） |
+| `CHANGE_THRESHOLD` | `5` | phash 汉明距离阈值 |
+| `OCR_BATCH_SIZE` | `10` | OCR 批处理大小 |
+| `GPU_USAGE_THRESHOLD` | `70` | GPU 占用阈值（%） |
+| `FORCE_INTERVAL` | `30` | 强制截图间隔（秒） |
 
 ## 技术栈
 
-| 模块 | 语言 | 关键依赖 |
-|------|------|----------|
-| Recall | Python 3.11 | Flask, PIL, RapidOCR, SQLite |
-| Recall Android | Kotlin | MediaProjection API, Room |
-| OpenClaw | TypeScript | Node.js >=22.12, grammY (Telegram) |
-
-## 开发状态
-
-### v1.0 已完成
-- [x] Recall 截图服务（PC + Android）
-- [x] OCR 文字提取（GPU 加速）
-- [x] Web UI 截图浏览
-- [x] OpenClaw 双 Agent 架构
-- [x] Thinking Agent 定时分析
-- [x] Chat Agent Telegram 聊天
-- [x] 活动摘要生成与存储
-- [x] 用户消息 Thinking 中继
-
-### 后续计划
-- [ ] 移动端截图通过 Telegram 中转到 PC
-- [ ] 更多渠道支持
+| 组件 | 技术 |
+|------|------|
+| 后端 | Python 3.11, FastAPI, Uvicorn, SQLite |
+| OCR | RapidOCR + ONNX Runtime (GPU 加速) |
+| 前端 | React 18, TypeScript, Vite, Tailwind CSS |
+| 测试 | pytest, Vitest, Playwright |
+| 图像处理 | Pillow, 感知哈希 |
+| 系统监控 | psutil, pynvml |
