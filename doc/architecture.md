@@ -5,9 +5,9 @@
 
 ## 文件结构
 
-/Users/zzf/share/ClawChater/recall/
+recall/
   app.py                        # FastAPI入口，挂载路由，启停Engine
-  config.py                     # 静态配置 + 路径工具函数
+  config.py                     # 静态路径常量 + AppSettings（环境变量驱动）+ ensure_data_dirs()
   db/                           # 数据层
     __init__.py
     database.py                 # 连接管理、建表
@@ -25,23 +25,29 @@
     __init__.py
     capture.py                  # 截屏
     ocr_worker.py               # OCR批处理
+    ocr_engine.py               # OCR引擎工厂（RapidOCR / tesseract fallback）
     incoming_watcher.py         # 监控 incoming 目录，导入远程截图
     monitor/
       __init__.py
       resource_monitor.py       # GPU/CPU监控
       screen_monitor.py         # 屏幕变化检测
-      time_monitor              # 定期抛出事件
+      time_monitor.py           # 定期抛出事件
+      utils.py                  # 公共工具（读取动态配置、参数校验）
     core/
       __init__.py
       event_bus.py              # 事件总线
       events.py                 # 所有事件类型（很小，一个文件够）
       engine.py                 # 编排器：持有EventBus，组装所有服务
-  
+
+  utils/
+    time_parse.py               # ISO8601 时间字符串解析（支持 Z 后缀）
+
   slave.py                      # 远程截图客户端（Slave 模式）
   frontend/                     # React+Vite+Tailwind
   data/
     recall.db
     screenshots/
+    logs/                       # 运行日志（recall.log）
   tests/
 
 ## 核心数据流
@@ -51,6 +57,7 @@
 - 请求从 app.py 进入，由 api/routes.py 分发。
 - 路由函数直接调用 db/screenshot.py、db/summary.py、db/setting.py 中的 CRUD 函数完成数据读写，返回 JSON。
 - 不经过 engine，不经过 services。
+- 例外：POST /api/config 在写库后向 EventBus 发出 config_updated 事件，Engine 收到后重新从数据库读取配置并推给各 monitor（实现热更新）。
 
 ### 后台常驻链路
 
@@ -60,9 +67,9 @@
   - 创建 EventBus
   - 实例化所有 monitor 和 worker
   - 把自己的处理方法注册到 EventBus 上
-- 随后 Engine.start() 以 asyncio task 形式启动三个 monitor 的循环。
+- 随后 Engine.start() 以 asyncio task 形式启动所有 monitor 的循环（三个常驻 monitor；若设置了 RECALL_INCOMING_DIR 则额外启动 IncomingWatcher）。
 
-### 三个 monitor
+### 三个常驻 monitor
 
 - 各自独立运行，只做一件事：检测条件，向 EventBus 抛事件。
 
@@ -88,8 +95,8 @@
 - 收到 screen_change 或 force_capture 时：
   - Engine 调用 services/capture.py 执行一次完整截图。
   - capture 做三件事：
-    - 调用系统 API 截屏
-    - 按 data/screenshots/YYYY-MM-DD/HH/{id}.jpg 路径写入文件系统
+    - 调用系统 API 截屏（macOS 用 screencapture，Windows 用 PIL.ImageGrab）
+    - 按 data/screenshots/YYYY-MM-DD/HH/{timestamp}.jpg 路径写入文件系统
     - 调用 db/screenshot.py 插入一条元数据记录，ocr_status 设为 pending
   - 完成后 Engine 重置 time_monitor 的计时器，避免刚截完图又被强制触发。
 
@@ -104,11 +111,15 @@
     - 如果数量为零，直接返回，本轮不执行。
     - 根据 id 从 db/screenshot.py 拿到 file_path，读取图片文件，调用 OCR 引擎批量推理。
     - 逐条调用 db/screenshot.py 更新对应记录的 ocr_text 和 ocr_status，成功设为 done，失败设为 error。
+    - OCR 引擎由 services/ocr_engine.py 的 create_ocr_engine() 工厂函数创建：优先使用 RapidOCR（onnxruntime，自动检测 CUDA），不可用时 fallback 到 tesseract 命令行。
+
+- 收到 config_updated 时：
+  - Engine 调用各 monitor 的 reload_config() 方法，从数据库重新读取 SCREEN_CHECK_INTERVAL、CHANGE_THRESHOLD、FORCE_INTERVAL 等动态配置，立即生效，无需重启。
 
 ### 事件类型汇总
 
-- services/core/events.py 中定义三种事件：screen_change、force_capture、resource_available。
-- 所有事件只携带最少信息（时间戳即可），业务数据不通过事件传递，而是通过数据库流转。
+- services/core/events.py 中定义四种事件：screen_change、force_capture、resource_available、config_updated。
+- 所有事件只携带最少信息（时间戳 + 可选 payload），业务数据不通过事件传递，而是通过数据库流转。
 - 这是整个系统解耦的关键：
   - monitor 不知道 capture 的存在
   - capture 不知道 ocr_worker 的存在
@@ -174,6 +185,19 @@ Engine 启动时如果检测到 `RECALL_INCOMING_DIR`，会自动启动 Incoming
 - 每 3 秒轮询 incoming 目录
 - 发现 `.jpg` + `.json` 配对文件后，插入 DB（`ocr_status=pending`），移动到标准 `data/screenshots/YYYY-MM-DD/HH/` 目录
 - 已有 OCR 流程自动处理导入的截图
+
+### Host 端全部环境变量
+
+| 环境变量 | 说明 | 默认值 |
+|---------|------|-------|
+| `RECALL_HOST` | 监听地址 | `127.0.0.1` |
+| `RECALL_PORT` | 监听端口 | `8000` |
+| `RECALL_RELOAD` | 热重载（开发用） | `0` |
+| `RECALL_INCOMING_DIR` | Slave 同步目录，设置后自动启用 IncomingWatcher | — |
+| `RECALL_FRONTEND_DIST` | 前端静态文件目录 | `recall/frontend/dist` |
+| `RECALL_SERVE_FRONTEND` | 是否挂载前端静态文件 | `1` |
+| `RECALL_LOG_FILE` | 日志文件路径 | `data/logs/recall.log` |
+| `RECALL_LOG_LEVEL` | 日志级别 | `DEBUG` |
 
 ### syncthing 配置要点
 
@@ -277,4 +301,5 @@ Engine 启动时如果检测到 `RECALL_INCOMING_DIR`，会自动启动 Incoming
   - 批量更新动态配置。
   - 请求体为 JSON 对象，如 {"CHANGE_THRESHOLD": "8", "OCR_BATCH_SIZE": "20"}。
   - 只更新传入的 key，未传入的保持不变。
+  - 写库后向 Engine 发出 config_updated 事件，monitor 配置立即热更新生效。
   - 返回更新后的完整配置。

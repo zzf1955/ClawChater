@@ -13,9 +13,12 @@
 ## 后端本地启动
 
 ```bash
-cd /Users/zzf/share/ClawChater
+# 在项目根目录执行
 python -m venv .venv
+# macOS / Linux
 source .venv/bin/activate
+# Windows (Git Bash)
+# source .venv/Scripts/activate
 pip install -r recall/requirements.txt
 uvicorn recall.app:app --reload
 ```
@@ -23,7 +26,7 @@ uvicorn recall.app:app --reload
 ## 前端本地启动
 
 ```bash
-cd /Users/zzf/share/ClawChater/recall/frontend
+cd recall/frontend
 npm install
 npm run dev
 ```
@@ -31,11 +34,13 @@ npm run dev
 ## 一体化启动（FastAPI 托管前端）
 
 ```bash
-cd /Users/zzf/share/ClawChater/recall/frontend
+conda activate recall
+cd recall/frontend
 npm install
 npm run build
 
-cd /Users/zzf/share/ClawChater
+# 回到项目根目录
+cd ../..
 uvicorn recall.app:app --host 127.0.0.1 --port 8000
 ```
 
@@ -49,14 +54,14 @@ uvicorn recall.app:app --host 127.0.0.1 --port 8000
 - 如需指向其他后端地址，可在前端构建前设置 `VITE_API_BASE_URL`，例如：
 
 ```bash
-cd /Users/zzf/share/ClawChater/recall/frontend
+cd recall/frontend
 VITE_API_BASE_URL=http://127.0.0.1:9000 npm run build
 ```
 
 ## 最小自检
 
 ```bash
-cd /Users/zzf/share/ClawChater
+# 在项目根目录执行
 pytest recall/tests/test_config.py
 python -m compileall recall
 cd recall/frontend && npm run build
@@ -65,7 +70,7 @@ cd recall/frontend && npm run build
 ## 回归测试基线
 
 ```bash
-cd /Users/zzf/share/ClawChater
+# 在项目根目录执行
 ./scripts/run_regression.sh
 ```
 

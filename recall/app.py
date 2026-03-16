@@ -38,6 +38,9 @@ def _configure_logging(log_file: Path, log_level: str) -> None:
     stream_handler.setLevel(resolved_level)
 
     log_file.parent.mkdir(parents=True, exist_ok=True)
+    for old_log in log_file.parent.iterdir():
+        if old_log.is_file():
+            old_log.unlink()
     file_handler = RotatingFileHandler(
         filename=log_file,
         maxBytes=5 * 1024 * 1024,
